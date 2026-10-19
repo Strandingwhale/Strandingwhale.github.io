@@ -1,6 +1,6 @@
-baseURL = "https://Strandingwhale.github.io/"
+baseURL = "https://strandingwhale.github.io/"
 languageCode = "zh-cn"
-title = "布里吉斯 | Tech Blog"
+title = "Strandingwhale | Tech Blog"
 theme = "PaperMod"
 
 [params]
