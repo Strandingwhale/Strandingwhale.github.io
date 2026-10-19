@@ -1,0 +1,8 @@
+baseURL = "https://Strandingwhale.github.io/"
+languageCode = "zh-cn"
+title = "布里吉斯 | Tech Blog"
+theme = "PaperMod"
+
+[params]
+  math = true # 开启LaTeX公式（图形学、408数学要用）
+  mermaid = true # 流程图
