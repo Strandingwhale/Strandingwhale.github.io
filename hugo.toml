@@ -6,3 +6,12 @@ theme = "PaperMod"
 [params]
   math = true # 开启LaTeX公式（图形学、408数学要用）
   mermaid = true # 流程图
+[[menu.main]]
+name = "Posts"
+url = "/posts/"
+weight = 1
+
+[[menu.main]]
+name = "About"
+url = "/about/"
+weight = 2
