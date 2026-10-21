@@ -2,34 +2,34 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1313/about/</loc>
+    <loc>https://strandingwhale.github.io/about/</loc>
     <lastmod>2026-10-20T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/</loc>
+    <loc>https://strandingwhale.github.io/</loc>
     <lastmod>2026-10-20T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/c&#43;&#43;/</loc>
+    <loc>https://strandingwhale.github.io/tags/c&#43;&#43;/</loc>
     <lastmod>2026-10-19T20:00:00+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/categories/</loc>
+    <loc>https://strandingwhale.github.io/categories/</loc>
     <lastmod>2026-10-19T20:00:00+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/posts/</loc>
+    <loc>https://strandingwhale.github.io/posts/</loc>
     <lastmod>2026-10-19T20:00:00+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/</loc>
+    <loc>https://strandingwhale.github.io/tags/</loc>
     <lastmod>2026-10-19T20:00:00+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</loc>
+    <loc>https://strandingwhale.github.io/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</loc>
     <lastmod>2026-10-19T20:00:00+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/categories/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</loc>
+    <loc>https://strandingwhale.github.io/categories/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</loc>
     <lastmod>2026-10-19T20:00:00+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</loc>
+    <loc>https://strandingwhale.github.io/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</loc>
     <lastmod>2026-10-19T20:00:00+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/</loc>
+    <loc>https://strandingwhale.github.io/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/</loc>
     <lastmod>2026-10-19T20:00:00+08:00</lastmod>
   </url>
 </urlset>

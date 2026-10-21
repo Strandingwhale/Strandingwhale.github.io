@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Home on Strandingwhale | Tech Blog</title>
-    <link>http://localhost:1313/</link>
+    <link>https://strandingwhale.github.io/</link>
     <description>Recent content in Home on Strandingwhale | Tech Blog</description>
     <generator>Hugo</generator>
     <language>zh-cn</language>
     <lastBuildDate>Tue, 20 Oct 2026 00:00:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://strandingwhale.github.io/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>About</title>
-      <link>http://localhost:1313/about/</link>
+      <link>https://strandingwhale.github.io/about/</link>
       <pubDate>Tue, 20 Oct 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/about/</guid>
+      <guid>https://strandingwhale.github.io/about/</guid>
       <description>&lt;p&gt;我是Strandingwhale，也可以叫我bridges，计算机专业，专注游戏后端与Unreal引擎开发。在git pages和博客园上发布文章，其他网站上的都不是本人。&lt;/p&gt;
 &lt;p&gt;目前还在上大学，希望能做出很牛逼的项目，然后去到我喜欢的岗位。&lt;/p&gt;
 &lt;p&gt;本人是冯·诺伊曼派，不是图灵学派。&lt;/p&gt;
@@ -22,9 +22,9 @@
     </item>
     <item>
       <title>开始和近期项目计划</title>
-      <link>http://localhost:1313/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</link>
+      <link>https://strandingwhale.github.io/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</link>
       <pubDate>Mon, 19 Oct 2026 20:00:00 +0800</pubDate>
-      <guid>http://localhost:1313/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</guid>
+      <guid>https://strandingwhale.github.io/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</guid>
       <description>开始和近期项目计划</description>
     </item>
   </channel>
