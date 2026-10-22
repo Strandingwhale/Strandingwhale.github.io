@@ -2,24 +2,31 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Home on Strandingwhale | Tech Blog</title>
-    <link>https://strandingwhale.github.io/</link>
+    <link>http://localhost:1313/</link>
     <description>Recent content in Home on Strandingwhale | Tech Blog</description>
     <generator>Hugo</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Thu, 22 Oct 2026 13:30:00 +0800</lastBuildDate>
-    <atom:link href="https://strandingwhale.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 22 Oct 2026 20:20:00 +0800</lastBuildDate>
+    <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>检测与网关</title>
+      <link>http://localhost:1313/posts/%E6%A3%80%E6%B5%8B%E4%B8%8E%E7%BD%91%E5%85%B3/</link>
+      <pubDate>Thu, 22 Oct 2026 20:20:00 +0800</pubDate>
+      <guid>http://localhost:1313/posts/%E6%A3%80%E6%B5%8B%E4%B8%8E%E7%BD%91%E5%85%B3/</guid>
+      <description>建造网关</description>
+    </item>
     <item>
       <title>第一个新文件“packet”</title>
-      <link>https://strandingwhale.github.io/posts/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/</link>
+      <link>http://localhost:1313/posts/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/</link>
       <pubDate>Thu, 22 Oct 2026 13:30:00 +0800</pubDate>
-      <guid>https://strandingwhale.github.io/posts/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/</guid>
+      <guid>http://localhost:1313/posts/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/</guid>
       <description>第一个文件</description>
     </item>
     <item>
       <title>About</title>
-      <link>https://strandingwhale.github.io/about/</link>
+      <link>http://localhost:1313/about/</link>
       <pubDate>Tue, 20 Oct 2026 00:00:00 +0000</pubDate>
-      <guid>https://strandingwhale.github.io/about/</guid>
+      <guid>http://localhost:1313/about/</guid>
       <description>&lt;p&gt;我是Strandingwhale，也可以叫我bridges，计算机专业，专注游戏后端与Unreal引擎开发。在git pages和博客园上发布文章，其他网站上的都不是本人。&lt;/p&gt;
 &lt;p&gt;目前还在上大学，希望能做出很牛逼的项目，然后去到我喜欢的岗位。&lt;/p&gt;
 &lt;p&gt;本人是冯·诺伊曼派，不是图灵学派。&lt;/p&gt;
@@ -29,9 +36,9 @@
     </item>
     <item>
       <title>开始和近期项目计划</title>
-      <link>https://strandingwhale.github.io/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</link>
+      <link>http://localhost:1313/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</link>
       <pubDate>Mon, 19 Oct 2026 20:00:00 +0800</pubDate>
-      <guid>https://strandingwhale.github.io/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</guid>
+      <guid>http://localhost:1313/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/</guid>
       <description>开始和近期项目计划</description>
     </item>
   </channel>

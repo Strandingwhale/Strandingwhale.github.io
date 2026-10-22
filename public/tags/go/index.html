@@ -1,25 +1,25 @@
 <!DOCTYPE html>
 <html lang="en" dir="auto" data-theme="auto">
 
-<head><meta charset="utf-8">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script><meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="robots" content="index, follow">
+<meta name="robots" content="noindex, nofollow">
 <title>Go | Strandingwhale | Tech Blog</title>
 <meta name="keywords" content="">
 <meta name="description" content="">
 <meta name="author" content="">
-<link rel="canonical" href="https://strandingwhale.github.io/tags/go/">
+<link rel="canonical" href="http://localhost:1313/tags/go/">
 <link crossorigin="anonymous" href="/assets/css/stylesheet.2fd9135862a3da866393a267370bb97cd812193a02eb63558b88b00f30ec3648.css" integrity="sha256-L9kTWGKj2oZjk6JnNwu5fNgSGToC62NVi4iwDzDsNkg=" rel="preload stylesheet" as="style">
-<link rel="icon" href="https://strandingwhale.github.io/favicon.ico">
-<link rel="icon" type="image/png" sizes="16x16" href="https://strandingwhale.github.io/favicon-16x16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="https://strandingwhale.github.io/favicon-32x32.png">
-<link rel="apple-touch-icon" href="https://strandingwhale.github.io/apple-touch-icon.png">
-<link rel="mask-icon" href="https://strandingwhale.github.io/safari-pinned-tab.svg">
+<link rel="icon" href="http://localhost:1313/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/safari-pinned-tab.svg">
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
-<link rel="alternate" type="application/rss+xml" href="https://strandingwhale.github.io/tags/go/index.xml" title="rss">
-<link rel="alternate" hreflang="en" href="https://strandingwhale.github.io/tags/go/">
+<link rel="alternate" type="application/rss+xml" href="http://localhost:1313/tags/go/index.xml" title="rss">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/tags/go/">
 <noscript>
     <style>
         #theme-toggle,
@@ -65,21 +65,13 @@
         document.querySelector("html").dataset.theme = 'light';
     }
 
-</script><meta property="og:url" content="https://strandingwhale.github.io/tags/go/">
-  <meta property="og:site_name" content="Strandingwhale | Tech Blog">
-  <meta property="og:title" content="Go">
-  <meta property="og:locale" content="zh_cn">
-  <meta property="og:type" content="website">
-
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Go">
-
+</script>
 </head>
 <body class="list" id="top">
     <header class="header">
     <nav class="header-nav">
         <div class="logo">
-            <a href="https://strandingwhale.github.io/" accesskey="h" title="Strandingwhale | Tech Blog (Alt + H)">Strandingwhale | Tech Blog</a>
+            <a href="http://localhost:1313/" accesskey="h" title="Strandingwhale | Tech Blog (Alt + H)">Strandingwhale | Tech Blog</a>
             <div class="logo-switches">
                 <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
                     <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
@@ -105,12 +97,12 @@
         </div>
         <ul id="menu" class="menu">
             <li>
-                <a href="https://strandingwhale.github.io/posts/" title="Posts">
+                <a href="http://localhost:1313/posts/" title="Posts">
                     <span>Posts</span>
                 </a>
             </li>
             <li>
-                <a href="https://strandingwhale.github.io/about/" title="About">
+                <a href="http://localhost:1313/about/" title="About">
                     <span>About</span>
                 </a>
             </li>
@@ -126,6 +118,22 @@
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">检测与网关
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 晚上好，今天我优化了我的Decode函数，并写了一个测试文件检测我的packet。对于本次更新文件，我大概用了一个小时就写好了，快了很多。还有关于这个游戏，我想要直接自研一个引擎，不过这要等到我先用unity或unreal把游戏原型做出来在说把。如果不出意外的话，后面几年我都要把空闲时间花在这了（除了考研复习时间）。
+正文 这是优化代码， 减少了header变量，而改用直接写入[:4]。而且少用了检测，可以减少一点负担。 至于检测就容易多了 大概几个检测都是这个格式，比较简单就不多说了。 然后就是网关。 也都是简单的语法，就是查”net“的函数怎么使用花了点时间。明天继续。
+</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-10-22T20:20:00+08:00'>October 22, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 检测与网关" href="http://localhost:1313/posts/%E6%A3%80%E6%B5%8B%E4%B8%8E%E7%BD%91%E5%85%B3/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">第一个新文件“packet”
     </h2>
   </header>
@@ -138,12 +146,12 @@
   <footer class="entry-footer">
 
 <span title='2026-10-22T13:30:00+08:00'>October 22, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 第一个新文件“packet”" href="https://strandingwhale.github.io/posts/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/"></a>
+  <a class="entry-link" aria-label="post link to 第一个新文件“packet”" href="http://localhost:1313/posts/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/"></a>
 </article>
     </main>
     
 <footer class="footer">
-        <span>&copy; 2026 <a href="https://strandingwhale.github.io/">Strandingwhale | Tech Blog</a></span> · 
+        <span>&copy; 2026 <a href="http://localhost:1313/">Strandingwhale | Tech Blog</a></span> · 
 
     
     

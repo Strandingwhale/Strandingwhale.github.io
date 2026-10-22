@@ -2,38 +2,38 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Tags on Strandingwhale | Tech Blog</title>
-    <link>https://strandingwhale.github.io/tags/</link>
+    <link>http://localhost:1313/tags/</link>
     <description>Recent content in Tags on Strandingwhale | Tech Blog</description>
     <generator>Hugo</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Thu, 22 Oct 2026 13:30:00 +0800</lastBuildDate>
-    <atom:link href="https://strandingwhale.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 22 Oct 2026 20:20:00 +0800</lastBuildDate>
+    <atom:link href="http://localhost:1313/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Go</title>
-      <link>https://strandingwhale.github.io/tags/go/</link>
-      <pubDate>Thu, 22 Oct 2026 13:30:00 +0800</pubDate>
-      <guid>https://strandingwhale.github.io/tags/go/</guid>
+      <link>http://localhost:1313/tags/go/</link>
+      <pubDate>Thu, 22 Oct 2026 20:20:00 +0800</pubDate>
+      <guid>http://localhost:1313/tags/go/</guid>
       <description></description>
     </item>
     <item>
       <title>游戏开发</title>
-      <link>https://strandingwhale.github.io/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</link>
-      <pubDate>Thu, 22 Oct 2026 13:30:00 +0800</pubDate>
-      <guid>https://strandingwhale.github.io/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</guid>
+      <link>http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</link>
+      <pubDate>Thu, 22 Oct 2026 20:20:00 +0800</pubDate>
+      <guid>http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</guid>
       <description></description>
     </item>
     <item>
       <title>游戏项目</title>
-      <link>https://strandingwhale.github.io/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/</link>
-      <pubDate>Thu, 22 Oct 2026 13:30:00 +0800</pubDate>
-      <guid>https://strandingwhale.github.io/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/</guid>
+      <link>http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/</link>
+      <pubDate>Thu, 22 Oct 2026 20:20:00 +0800</pubDate>
+      <guid>http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/</guid>
       <description></description>
     </item>
     <item>
       <title>C&#43;&#43;</title>
-      <link>https://strandingwhale.github.io/tags/c&#43;&#43;/</link>
+      <link>http://localhost:1313/tags/c&#43;&#43;/</link>
       <pubDate>Mon, 19 Oct 2026 20:00:00 +0800</pubDate>
-      <guid>https://strandingwhale.github.io/tags/c&#43;&#43;/</guid>
+      <guid>http://localhost:1313/tags/c&#43;&#43;/</guid>
       <description></description>
     </item>
   </channel>
