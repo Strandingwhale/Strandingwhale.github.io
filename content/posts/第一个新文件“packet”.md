@@ -1,6 +1,6 @@
 ---
 title: "第一个新文件“packet”"
-date: 2026-10-22
+date: 2026-10-22T20:00:00+08:00
 draft: false
 tags: ["go", "游戏开发", "游戏项目"]
 categories: ["游戏开发"]
