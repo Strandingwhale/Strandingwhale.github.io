@@ -71,8 +71,8 @@
   <meta property="og:locale" content="zh_cn">
   <meta property="og:type" content="article">
     <meta property="article:section" content="posts">
-    <meta property="article:published_time" content="2026-10-22T00:00:00+00:00">
-    <meta property="article:modified_time" content="2026-10-22T00:00:00+00:00">
+    <meta property="article:published_time" content="2026-10-22T13:30:00+08:00">
+    <meta property="article:modified_time" content="2026-10-22T13:30:00+08:00">
     <meta property="article:tag" content="Go">
     <meta property="article:tag" content="游戏开发">
     <meta property="article:tag" content="游戏项目">
@@ -112,11 +112,11 @@
   "keywords": [
     "go", "游戏开发", "游戏项目"
   ],
-  "articleBody": "前言 我开始建造我的游戏，暂且叫他无底深城吧。首先是构建后端，我打算用go语言来做。我之前学过一点，但不多，也算从头再来。\n第一个文件 “packet.go”是将消息 ID + protobuf 二进制 → 组装成 [4字节长度][2字节msgId][payload] 的包（大端）并从字节缓冲区里不断读，切出完整包，处理半包、粘包的功能文件\n这些花了我几个小时， 总之收获还蛮多的。而且这和网上的课程相去甚远，像C++里的STL，别人不教，就算你精通了基础，也还是不一样。好了先到这，我睡了。\n",
-  "wordCount" : "14",
+  "articleBody": "前言 晚上好pithub pages 和博客园的读者们，我开始建造我的游戏，暂且叫他无底深城吧。首先是构建后端，我打算用go语言来做。我之前学过一点，但不多，也算从头再来。\n第一个文件 “packet.go”是将消息 ID + protobuf 二进制 → 组装成 [4字节长度][2字节msgId][payload] 的包（大端）并从字节缓冲区里不断读，切出完整包，处理半包、粘包的功能文件\n这些花了我几个小时， 总之收获还蛮多的。而且这和网上的课程相去甚远，像C++里的STL，别人不教，就算你精通了基础，也还是不一样。好了先到这，我睡了。\n",
+  "wordCount" : "16",
   "inLanguage": "en",
-  "datePublished": "2026-10-22T00:00:00Z",
-  "dateModified": "2026-10-22T00:00:00Z",
+  "datePublished": "2026-10-22T13:30:00+08:00",
+  "dateModified": "2026-10-22T13:30:00+08:00",
   "mainEntityOfPage": {
     "@type": "WebPage",
     "@id": "https://strandingwhale.github.io/posts/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/"
@@ -187,12 +187,12 @@
     </div>
     <div class="post-meta">
 
-<span title='2026-10-22T00:00:00+00:00'>October 22, 2026</span>
+<span title='2026-10-22T13:30:00+08:00'>October 22, 2026</span>
 
 </div>
   </header> 
   <div class="post-content md-content"><h1 id="前言">前言<a hidden class="anchor" aria-hidden="true" href="#前言">#</a></h1>
-<p>    我开始建造我的游戏，暂且叫他无底深城吧。首先是构建后端，我打算用go语言来做。我之前学过一点，但不多，也算从头再来。</p>
+<p>    晚上好pithub pages 和博客园的读者们，我开始建造我的游戏，暂且叫他无底深城吧。首先是构建后端，我打算用go语言来做。我之前学过一点，但不多，也算从头再来。</p>
 <h1 id="第一个文件">第一个文件<a hidden class="anchor" aria-hidden="true" href="#第一个文件">#</a></h1>
 <p>    “packet.go”是将消息 ID + protobuf 二进制 → 组装成 <code>[4字节长度][2字节msgId][payload]</code> 的包（大端）并从字节缓冲区里不断读，切出完整包，处理半包、粘包的功能文件</p>
 <p><img alt="Encode是用于编码的函数" loading="lazy" src="/images/packet1.png"></p>
