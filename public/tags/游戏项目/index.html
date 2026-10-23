@@ -118,6 +118,25 @@
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">基础登陆与心跳检测
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 我的网关差不多完成了2/5，下个星期就能搞定基础的网关服务。登陆的内容才刚刚开始，连MySQL都还没有链接上，还有很多工作要忙。我预计明年一月才能完成一半的工作。而这还只是后端。之后我还要自学Unity，搞定前端的一些内容。这全部要到28年了。自研游戏引擎的事还要更靠后，任重道远啊。
+登陆 用”net“的函数，先对端口进行监听。再对监听的端口进行处理
+listener, err := net.Listen(&#34;tcp&#34;, &#34;:8888&#34;) ... conn, err := listener.Accept() ... go handleConn(conn) 将收到的消息编码成包，然后写回（此时MessageID为1001）
+pkt, _ := common.Encode(p.MessageID, p.Payload) _, _ = loginConn.Write(pkt) login接收到包（MessageID为1001），进行登陆检测（暂时用简单方法，还没链接数据库），检测完后写回。（MessageID为1002）
+n, err := conn.Read(readBuf) if p.MessageID == 1001 { body := string(p.Payload) fmt.Printf(&#34;收到登录请求：%s\n&#34;, body) if body == &#34;test&#34; { respMsgId = 1002 respBody = []byte(&#34;ok:session-10086&#34;) } else { respMsgId = 1002 respBody = []byte(&#34;err:账号密码错误&#34;) } respPkt, _ := common.Encode(respMsgId, respBody) _, _ = conn.Write(respPkt) } 之后经过再次的网关，写回给链接的用户。
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-10-23T12:30:00+08:00'>October 23, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 基础登陆与心跳检测" href="http://localhost:1313/posts/%E5%9F%BA%E7%A1%80%E7%99%BB%E9%99%86%E4%B8%8E%E5%BF%83%E8%B7%B3%E6%A3%80%E6%B5%8B/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">检测与网关
     </h2>
   </header>

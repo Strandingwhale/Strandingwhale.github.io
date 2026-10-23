@@ -3,30 +3,33 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>http://localhost:1313/categories/</loc>
-    <lastmod>2026-10-22T20:20:00+08:00</lastmod>
+    <lastmod>2026-10-23T12:30:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/tags/go/</loc>
-    <lastmod>2026-10-22T20:20:00+08:00</lastmod>
+    <lastmod>2026-10-23T12:30:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/</loc>
-    <lastmod>2026-10-22T20:20:00+08:00</lastmod>
+    <lastmod>2026-10-23T12:30:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/posts/</loc>
-    <lastmod>2026-10-22T20:20:00+08:00</lastmod>
+    <lastmod>2026-10-23T12:30:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/tags/</loc>
-    <lastmod>2026-10-22T20:20:00+08:00</lastmod>
+    <lastmod>2026-10-23T12:30:00+08:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/posts/%E6%A3%80%E6%B5%8B%E4%B8%8E%E7%BD%91%E5%85%B3/</loc>
-    <lastmod>2026-10-22T20:20:00+08:00</lastmod>
+    <loc>http://localhost:1313/posts/%E5%9F%BA%E7%A1%80%E7%99%BB%E9%99%86%E4%B8%8E%E5%BF%83%E8%B7%B3%E6%A3%80%E6%B5%8B/</loc>
+    <lastmod>2026-10-23T12:30:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/categories/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</loc>
-    <lastmod>2026-10-22T20:20:00+08:00</lastmod>
+    <lastmod>2026-10-23T12:30:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/</loc>
-    <lastmod>2026-10-22T20:20:00+08:00</lastmod>
+    <lastmod>2026-10-23T12:30:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/</loc>
+    <lastmod>2026-10-23T12:30:00+08:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/posts/%E6%A3%80%E6%B5%8B%E4%B8%8E%E7%BD%91%E5%85%B3/</loc>
     <lastmod>2026-10-22T20:20:00+08:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/posts/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/</loc>
