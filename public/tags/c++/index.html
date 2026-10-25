@@ -118,6 +118,24 @@
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">重大更新：数据库与protobuf
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 今天我完成了数据库链接与protobuf创建，顺带把原本的fmt输出改成了日志输出。把账号、密码检测真正写入了代码中。我几乎重建了server.go和account.go的代码，花了很多很多的时间去改bug。挺掉头发的。payload在login里存的是（账号&#43;密码）
+protobuf 首先建立proto后最的文件，写入message结构，并自动运行生成.go文件，这一步还挺简单的。
+syntax = &#34;proto3&#34;; package api; option go_package=&#34;./;api&#34;; //心跳请求 message PingReq{ int64 timestamp = 1; } //心跳回复 message PingResp{ int64 timestamp = 1; } ... 数据库 首先MySQL用于保存长时间的数据，账号、密码之类的，Redis用于链接token，热数据缓存。
+// InitDB 打开 MySQL 连接池并验证连通性。 // dsn 形如：root:root123@tcp(127.0.0.1:3306)/abyssal_city?parseTime=true func InitDB(dsn string) (*sql.DB, error) { db, err := sql.Open(&#34;mysql&#34;, dsn) if err != nil { return nil, fmt.Errorf(&#34;open mysql: %w&#34;, err) } // 连接池参数：够用就行 db.SetMaxOpenConns(20) // 最多同时打开的连接数 db.SetMaxIdleConns(10) // 空闲时保留的连接数，避免频繁建连 db.SetConnMaxLifetime(time.Hour) // 连接最长存活时间，防 MySQL 服务端超时踢掉 // Open 只是配置，Ping 才真正建立连接 if err := db.Ping(); err != nil { return nil, fmt.Errorf(&#34;ping mysql: %w&#34;, err) } return db, nil } // InitRedis 创建 Redis 客户端并验证连通性 func InitRedis(addr string) (*redis.Client, error) { rdb := redis.NewClient(&amp;redis.Options{Addr: addr}) ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second) defer cancel() if err := rdb.Ping(ctx).Err(); err != nil { return nil, fmt.Errorf(&#34;ping redis: %w&#34;, err) } return rdb, nil } 最主要的还是登陆相关的更改，首先定义token有效时间和回包错误码
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-10-25T02:00:00+08:00'>October 25, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 重大更新：数据库与protobuf" href="http://localhost:1313/posts/%E9%87%8D%E5%A4%A7%E6%9B%B4%E6%96%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%8Eprotobuf/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">开始和近期项目计划
     </h2>
   </header>
