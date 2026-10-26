@@ -118,6 +118,33 @@
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">近期总结和初期战斗
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 现在我来到了不定期的总结环节，来让我们看看最近我都做了些什么，然后再说后续计划。
+第一部分：common 这是我写的第一个项目文件，主要包含了packet和日志。看着当时的代码，感觉有点简陋了。
+日志 利用了go的”log“输出形如：2026/10/25 10:30:00 [gateway] 客户端连上：127.0.0.1:1234
+packet 这个文件代码很少，作用就是给拿来的编码和解码。前几天我还弄了proto。想着要不要把Marshal也封装进packet里，不过这是后话了，站不考虑。不多赘述。
+第二部分：网关 会话 先讲这个才好将服务。设定的会话结构体，包含网络端口、网络ID、客户端地址、拆包缓存、最后收到消息时间、登录成功后分配的会话id、用户id，登录成功后赋值。首先创建新会话，并继续获取客户端地址。
+其包含的函数还有：ConnID 返回网关分配的连接标识、SetLogin 登录成功后绑定用户身份、UID 返回登录绑定的用户 id、UpdateRecvTime 更新最后接收时间、IsTimeout 判断会话是否心跳超时、WriteMsg 给客户端发协议包。
+服务 这个文件用于处理 单个客户端 TCP 链接，先获取到端口，为这条连接分配网关内唯一的 connID，登记到 clientMap。并进行心跳检测，检测是否网关进程关闭，收到数据（例如注册和登陆）后刷新最后接收时间。收到心跳ping包后检测时间戳是否相同，回复pong。收到客户端发来的注册/登陆消息，转发给login。
+启动login后会连接login服务（之后会详细说明），并且启动协程读取login的回包，原路转发给客户端。如果登陆成功把 uid 绑定到会话，之后再透传给客户端。
+第三部分：login 此文件用于登陆/注册和签发token。启动login后检测网关是否在线。收到网关发送的请求包后，按mesid分发到具体函数。
+登陆 先把消息主体解码成结构体，在MySQL中查找结构体中的账户，并获取到对应的uid和密码hash。然后与结构体中的密码hash进行bcrypt 比对：不解密哈希，而是用同样的算法验证是否匹配。全部正确，会签发token，将token和uid传入Redis里，设置两小时的时间限制。
+注册 也是先把传入的消息解码，把解码出来的结构体中的密码进行bcrypt加密，每次结果不同（自带随机盐），相同密码也无法从哈希看出。把账号，密码hash存入MySQL中主键（uid）自增，如果账号冲突了，则返回错误信息。
+第四部分：数据库与简易客户端 这一段很简单就连着讲，数据库的建立就是标准的模板。客户端做建库并建表，供首次联调使用。建立e2e函数依次走 注册 → 登录 → 心跳，并回查 MySQL / Redis 落库结果。
+后续计划 后续就要做战斗文件了，这部分代码要比之前难很多，可能要隔好几天才做一次更新。主我好运吧，我先睡了，晚安。
+</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-10-26T13:20:00+08:00'>October 26, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 近期总结和初期战斗" href="http://localhost:1313/posts/%E8%BF%91%E6%9C%9F%E6%80%BB%E7%BB%93%E5%92%8C%E5%88%9D%E6%9C%9F%E6%88%98%E6%96%97/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">重大更新：数据库与protobuf
     </h2>
   </header>
