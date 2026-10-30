@@ -3,7 +3,7 @@ title: "About"
 date: 2026-10-20
 ---
 
-我是Strandingwhale，也可以叫我bridges，计算机专业，专注游戏后端与Unreal引擎开发。在git pages和博客园上发布文章，其他网站上的都不是本人。
+我是Strandingwhale，也可以叫我bridges，计算机专业，专注游戏后端与游戏引擎开发。在git pages和博客园上发布文章，其他网站上的都不是本人。
 
 目前还在上大学，希望能做出很牛逼的项目，然后去到我喜欢的岗位。
 

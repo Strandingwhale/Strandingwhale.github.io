@@ -2,7 +2,7 @@
 title: "重大更新：数据库与protobuf"
 date: 2026-10-25T2:00:00+08:00
 draft: false
-tags: ["C++", "游戏开发", "游戏项目"]
+tags: ["go", "游戏开发", "游戏项目"]
 categories: ["游戏开发"]
 description: "数据库，proyobuf"
 ---

@@ -118,6 +118,22 @@
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">战斗更新
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>简单关卡配置 首先，我们要先配置敌人和干员的配置，暂时固定。敌人行动路线的拐点（enemyPath）暂时也固定。
+// Vec2 世界坐标，1 单位 = 1 格 type Vec2 struct { X, Y float64 } const ( mapWidth = 9 // 地图宽（格） mapHeight = 2 // 地图高（格） pathY = 1.0 // 敌人路径所在的行（第 2 行），干员部署在第 1 行 ) const ( enemyConfigID = 1 // 敌人配置ID enemyMaxHP = 100 // 敌人血量 enemySpeed = 1.2 // 敌人速度（格/秒） baseMaxHP = 1 // 基地生命，漏一只怪即失败 operatorMaxHP = 100 // 干员血量（当前不会被攻击，仅展示） attackRange = 2.5 // 干员攻击半径（格） attackDamage = 12 // 干员每帧伤害 deployCost = 4 // 部署干员消耗 initCost = 10 // 开局费用 maxOperators = 1 // 场上干员上限 ) // enemyPath 敌人行进路线：第 2 行从左到右的一条直线 var enemyPath = []Vec2{{0, pathY}, {mapWidth - 1, pathY}} 房间与战斗推进 定义房间的基本数据结构，
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-10-30T13:00:00+08:00'>October 30, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 战斗更新" href="http://localhost:1313/posts/2026/10/%E6%88%98%E6%96%97%E6%9B%B4%E6%96%B0/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">近期总结和初期战斗
     </h2>
   </header>
@@ -140,7 +156,7 @@ packet 这个文件代码很少，作用就是给拿来的编码和解码。前�
   <footer class="entry-footer">
 
 <span title='2026-10-26T13:20:00+08:00'>October 26, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 近期总结和初期战斗" href="http://localhost:1313/posts/%E8%BF%91%E6%9C%9F%E6%80%BB%E7%BB%93%E5%92%8C%E5%88%9D%E6%9C%9F%E6%88%98%E6%96%97/"></a>
+  <a class="entry-link" aria-label="post link to 近期总结和初期战斗" href="http://localhost:1313/posts/2026/10/%E8%BF%91%E6%9C%9F%E6%80%BB%E7%BB%93%E5%92%8C%E5%88%9D%E6%9C%9F%E6%88%98%E6%96%97/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
@@ -158,7 +174,7 @@ syntax = &#34;proto3&#34;; package api; option go_package=&#34;./;api&#34;; //�
   <footer class="entry-footer">
 
 <span title='2026-10-25T02:00:00+08:00'>October 25, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 重大更新：数据库与protobuf" href="http://localhost:1313/posts/%E9%87%8D%E5%A4%A7%E6%9B%B4%E6%96%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%8Eprotobuf/"></a>
+  <a class="entry-link" aria-label="post link to 重大更新：数据库与protobuf" href="http://localhost:1313/posts/2026/10/%E9%87%8D%E5%A4%A7%E6%9B%B4%E6%96%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%8Eprotobuf/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
@@ -176,7 +192,7 @@ type Session struct { conn net.Conn connID uint64 // 网关内自增的连接标
   <footer class="entry-footer">
 
 <span title='2026-10-24T13:30:00+08:00'>October 24, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 会话更新" href="http://localhost:1313/posts/%E4%BC%9A%E8%AF%9D%E6%9B%B4%E6%96%B0/"></a>
+  <a class="entry-link" aria-label="post link to 会话更新" href="http://localhost:1313/posts/2026/10/%E4%BC%9A%E8%AF%9D%E6%9B%B4%E6%96%B0/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
@@ -195,7 +211,7 @@ n, err := conn.Read(readBuf) if p.MessageID == 1001 { body := string(p.Payload) 
   <footer class="entry-footer">
 
 <span title='2026-10-23T12:30:00+08:00'>October 23, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 基础登陆与心跳检测" href="http://localhost:1313/posts/%E5%9F%BA%E7%A1%80%E7%99%BB%E9%99%86%E4%B8%8E%E5%BF%83%E8%B7%B3%E6%A3%80%E6%B5%8B/"></a>
+  <a class="entry-link" aria-label="post link to 基础登陆与心跳检测" href="http://localhost:1313/posts/2026/10/%E5%9F%BA%E7%A1%80%E7%99%BB%E9%99%86%E4%B8%8E%E5%BF%83%E8%B7%B3%E6%A3%80%E6%B5%8B/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
@@ -211,7 +227,7 @@ n, err := conn.Read(readBuf) if p.MessageID == 1001 { body := string(p.Payload) 
   <footer class="entry-footer">
 
 <span title='2026-10-22T20:20:00+08:00'>October 22, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 检测与网关" href="http://localhost:1313/posts/%E6%A3%80%E6%B5%8B%E4%B8%8E%E7%BD%91%E5%85%B3/"></a>
+  <a class="entry-link" aria-label="post link to 检测与网关" href="http://localhost:1313/posts/2026/10/%E6%A3%80%E6%B5%8B%E4%B8%8E%E7%BD%91%E5%85%B3/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
@@ -228,7 +244,7 @@ n, err := conn.Read(readBuf) if p.MessageID == 1001 { body := string(p.Payload) 
   <footer class="entry-footer">
 
 <span title='2026-10-22T13:30:00+08:00'>October 22, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 第一个新文件“packet”" href="http://localhost:1313/posts/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/"></a>
+  <a class="entry-link" aria-label="post link to 第一个新文件“packet”" href="http://localhost:1313/posts/2026/10/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/"></a>
 </article>
 
 <article class="post-entry tag-entry"> 
@@ -250,7 +266,7 @@ n, err := conn.Read(readBuf) if p.MessageID == 1001 { body := string(p.Payload) 
   <footer class="entry-footer">
 
 <span title='2026-10-19T20:00:00+08:00'>October 19, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 开始和近期项目计划" href="http://localhost:1313/posts/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/"></a>
+  <a class="entry-link" aria-label="post link to 开始和近期项目计划" href="http://localhost:1313/posts/2026/10/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/"></a>
 </article>
     </main>
     
