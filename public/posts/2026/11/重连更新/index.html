@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="noindex, nofollow">
+<title>重连更新 | Strandingwhale | Tech Blog</title>
+<meta name="keywords" content="go, 游戏开发, 游戏项目">
+<meta name="description" content="前言
+    今天更新了闪断重连，其他比较简单，就客户端麻烦点，要重写很多东西。
+用坐标逆向求行进距离
+    断线重连，可以是恢复是因为我每隔10帧保存一次快照，读取快照中的信息来恢复闪断前的状态。而在快照中没有直接保存Dist（行进距离）的原因是，“绕远路就是近路”（当时没想到）。
+    总之我们还是先取得敌人的路径点并计算两点间的直线距离
+a, b := enemyPath[i-1], enemyPath[i]
+dx, dy := b.X-a.X, b.Y-a.Y
+seg := math.Hypot(dx, dy)
+    如果seg大于零（a，b间有距离）则算出敌人坐标p.x和p.y在a，b间的什么地方。利用t作为坐标位于a，b间的几分之几处。最后算出具体行进距离。
+t = ((p.X-a.X)*dx &#43; (p.Y-a.Y)*dy) / (seg * seg)
+t = math.Max(0, math.Min(1, t))
+
+qx, qy := a.X&#43;t*dx, a.Y&#43;t*dy
+if d := math.Hypot(p.X-qx, p.Y-qy); d &lt; bestD {
+	bestD = d
+	best = acc &#43; t*seg
+}
+重连恢复
+    要重连恢复，最重要的是保存快照。我设定每10帧数（2秒）保存一次。
+const snapshotIntervalFrames = 10
+...
+if r.frame%snapshotIntervalFrames == 0 {
+		if data, err := proto.Marshal(state); err == nil {
+			r.snapshots = append(r.snapshots, &amp;BattleSnapshot{Frame: r.frame, Data: data})
+		} else {
+			logger.Println(&#34;序列化战斗快照失败:&#34;, err)
+		}
+	}
+    然后是恢复重连，我们要先把旧循环退出。
+close(r.done)
+    从最近一次快照恢复 mu 保护的状态；无快照则保持当前状态继续
+if err := proto.Unmarshal(r.snapshots[n-1].Data, &amp;state);
+    然后恢复干员数据和敌人数据、还有链接数据。并跑run函数。
+客户端设置
+    这一段应该挺多的。首先我们传入basic的验证场景。
+mode        = flag.String(&#34;mode&#34;, &#34;basic&#34;, &#34;验证场景：basic | reconnect&#34;)
+func main() {
+	flag.Parse()
+
+	var err error
+	switch *mode {
+	case &#34;basic&#34;:
+		err = runBasic()
+	case &#34;reconnect&#34;:
+		err = runReconnect()
+	default:
+		fmt.Println(&#34;未知 -mode:&#34;, *mode)
+		os.Exit(1)
+	}
+	if err != nil {
+		fmt.Println(&#34;失败:&#34;, err)
+		os.Exit(1)
+	}
+}
+    runBasic 进房 → 部署 → 收状态推送 → 收结算">
+<meta name="author" content="">
+<link rel="canonical" href="http://localhost:1313/posts/2026/11/%E9%87%8D%E8%BF%9E%E6%9B%B4%E6%96%B0/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.2fd9135862a3da866393a267370bb97cd812193a02eb63558b88b00f30ec3648.css" integrity="sha256-L9kTWGKj2oZjk6JnNwu5fNgSGToC62NVi4iwDzDsNkg=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/posts/2026/11/%E9%87%8D%E8%BF%9E%E6%9B%B4%E6%96%B0/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" accesskey="h" title="Strandingwhale | Tech Blog (Alt + H)">Strandingwhale | Tech Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="http://localhost:1313/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      重连更新
+    </h1>
+    <div class="post-meta">
+
+<span title='2026-11-01T00:10:00+08:00'>November 1, 2026</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="前言">前言<a hidden class="anchor" aria-hidden="true" href="#前言">#</a></h1>
+<p>    今天更新了闪断重连，其他比较简单，就客户端麻烦点，要重写很多东西。</p>
+<h1 id="用坐标逆向求行进距离">用坐标逆向求行进距离<a hidden class="anchor" aria-hidden="true" href="#用坐标逆向求行进距离">#</a></h1>
+<p>    断线重连，可以是恢复是因为我每隔10帧保存一次快照，读取快照中的信息来恢复闪断前的状态。而在快照中没有直接保存Dist（行进距离）的原因是，“绕远路就是近路”（当时没想到）。</p>
+<p>    总之我们还是先取得敌人的路径点并计算两点间的直线距离</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span><span style="color:#a6e22e">a</span>, <span style="color:#a6e22e">b</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">enemyPath</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>], <span style="color:#a6e22e">enemyPath</span>[<span style="color:#a6e22e">i</span>]
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">dx</span>, <span style="color:#a6e22e">dy</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">b</span>.<span style="color:#a6e22e">X</span><span style="color:#f92672">-</span><span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">X</span>, <span style="color:#a6e22e">b</span>.<span style="color:#a6e22e">Y</span><span style="color:#f92672">-</span><span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">Y</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">seg</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">Hypot</span>(<span style="color:#a6e22e">dx</span>, <span style="color:#a6e22e">dy</span>)
+</span></span></code></pre></div><p>    如果seg大于零（a，b间有距离）则算出敌人坐标p.x和p.y在a，b间的什么地方。利用t作为坐标位于a，b间的几分之几处。最后算出具体行进距离。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span><span style="color:#a6e22e">t</span> = ((<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">X</span><span style="color:#f92672">-</span><span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">X</span>)<span style="color:#f92672">*</span><span style="color:#a6e22e">dx</span> <span style="color:#f92672">+</span> (<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">Y</span><span style="color:#f92672">-</span><span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">Y</span>)<span style="color:#f92672">*</span><span style="color:#a6e22e">dy</span>) <span style="color:#f92672">/</span> (<span style="color:#a6e22e">seg</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">seg</span>)
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">t</span> = <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">Max</span>(<span style="color:#ae81ff">0</span>, <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">Min</span>(<span style="color:#ae81ff">1</span>, <span style="color:#a6e22e">t</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">qx</span>, <span style="color:#a6e22e">qy</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">X</span><span style="color:#f92672">+</span><span style="color:#a6e22e">t</span><span style="color:#f92672">*</span><span style="color:#a6e22e">dx</span>, <span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">Y</span><span style="color:#f92672">+</span><span style="color:#a6e22e">t</span><span style="color:#f92672">*</span><span style="color:#a6e22e">dy</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">d</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">Hypot</span>(<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">X</span><span style="color:#f92672">-</span><span style="color:#a6e22e">qx</span>, <span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">Y</span><span style="color:#f92672">-</span><span style="color:#a6e22e">qy</span>); <span style="color:#a6e22e">d</span> &lt; <span style="color:#a6e22e">bestD</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">bestD</span> = <span style="color:#a6e22e">d</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">best</span> = <span style="color:#a6e22e">acc</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">t</span><span style="color:#f92672">*</span><span style="color:#a6e22e">seg</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h1 id="重连恢复">重连恢复<a hidden class="anchor" aria-hidden="true" href="#重连恢复">#</a></h1>
+<p>    要重连恢复，最重要的是保存快照。我设定每10帧数（2秒）保存一次。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#a6e22e">snapshotIntervalFrames</span> = <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">frame</span><span style="color:#f92672">%</span><span style="color:#a6e22e">snapshotIntervalFrames</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">data</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">proto</span>.<span style="color:#a6e22e">Marshal</span>(<span style="color:#a6e22e">state</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">==</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">snapshots</span> = append(<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">snapshots</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">BattleSnapshot</span>{<span style="color:#a6e22e">Frame</span>: <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">frame</span>, <span style="color:#a6e22e">Data</span>: <span style="color:#a6e22e">data</span>})
+</span></span><span style="display:flex;"><span>		} <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;序列化战斗快照失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    然后是恢复重连，我们要先把旧循环退出。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span>close(<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">done</span>)
+</span></span></code></pre></div><p>    从最近一次快照恢复 mu 保护的状态；无快照则保持当前状态继续</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">proto</span>.<span style="color:#a6e22e">Unmarshal</span>(<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">snapshots</span>[<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>].<span style="color:#a6e22e">Data</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">state</span>);
+</span></span></code></pre></div><p>    然后恢复干员数据和敌人数据、还有链接数据。并跑run函数。</p>
+<h1 id="客户端设置">客户端设置<a hidden class="anchor" aria-hidden="true" href="#客户端设置">#</a></h1>
+<p>    这一段应该挺多的。首先我们传入basic的验证场景。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span><span style="color:#a6e22e">mode</span>        = <span style="color:#a6e22e">flag</span>.<span style="color:#a6e22e">String</span>(<span style="color:#e6db74">&#34;mode&#34;</span>, <span style="color:#e6db74">&#34;basic&#34;</span>, <span style="color:#e6db74">&#34;验证场景：basic | reconnect&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">flag</span>.<span style="color:#a6e22e">Parse</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">err</span> <span style="color:#66d9ef">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">switch</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">mode</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">case</span> <span style="color:#e6db74">&#34;basic&#34;</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">err</span> = <span style="color:#a6e22e">runBasic</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">case</span> <span style="color:#e6db74">&#34;reconnect&#34;</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">err</span> = <span style="color:#a6e22e">runReconnect</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">default</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;未知 -mode:&#34;</span>, <span style="color:#f92672">*</span><span style="color:#a6e22e">mode</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">os</span>.<span style="color:#a6e22e">Exit</span>(<span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">os</span>.<span style="color:#a6e22e">Exit</span>(<span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>    runBasic 进房 → 部署 → 收状态推送 → 收结算</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">runBasic</span>() <span style="color:#66d9ef">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">c</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">dial</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>    链接网关</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span><span style="color:#a6e22e">gwAddr</span>      = <span style="color:#a6e22e">flag</span>.<span style="color:#a6e22e">String</span>(<span style="color:#e6db74">&#34;gw&#34;</span>, <span style="color:#e6db74">&#34;127.0.0.1:8888&#34;</span>, <span style="color:#e6db74">&#34;网关地址&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">dial</span>() (<span style="color:#f92672">*</span><span style="color:#a6e22e">client</span>, <span style="color:#66d9ef">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">conn</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">net</span>.<span style="color:#a6e22e">DialTimeout</span>(<span style="color:#e6db74">&#34;tcp&#34;</span>, <span style="color:#f92672">*</span><span style="color:#a6e22e">gwAddr</span>, <span style="color:#ae81ff">3</span><span style="color:#f92672">*</span><span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;连接网关失败: %w&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">client</span>{<span style="color:#a6e22e">conn</span>: <span style="color:#a6e22e">conn</span>}, <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>   再发送进房请求（roomID=0 为新开，非 0 为断线重连），等待 2001 回包</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">resp</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">enter</span>(<span style="color:#a6e22e">c</span>, <span style="color:#ae81ff">0</span>)<span style="color:#75715e">//runBasic()</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">enter</span>(<span style="color:#a6e22e">c</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">client</span>, <span style="color:#a6e22e">roomID</span> <span style="color:#66d9ef">uint32</span>) (<span style="color:#f92672">*</span><span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">EnterRoomResp</span>, <span style="color:#66d9ef">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">body</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">proto</span>.<span style="color:#a6e22e">Marshal</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">EnterRoomReq</span>{<span style="color:#a6e22e">LevelId</span>: <span style="color:#ae81ff">1</span>, <span style="color:#a6e22e">RoomId</span>: <span style="color:#a6e22e">roomID</span>})
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">c</span>.<span style="color:#a6e22e">send</span>(<span style="color:#a6e22e">msgEnterRoom</span>, <span style="color:#a6e22e">body</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">deadline</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>().<span style="color:#a6e22e">Add</span>(<span style="color:#ae81ff">5</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>().<span style="color:#a6e22e">Before</span>(<span style="color:#a6e22e">deadline</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">p</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">c</span>.<span style="color:#a6e22e">next</span>(<span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">p</span> <span style="color:#f92672">==</span> <span style="color:#66d9ef">nil</span> <span style="color:#f92672">||</span> <span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">MessageID</span> <span style="color:#f92672">!=</span> <span style="color:#a6e22e">msgEnterRoomR</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">continue</span> <span style="color:#75715e">// 跳过与本次请求无关的早期推送</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">resp</span> <span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">EnterRoomResp</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">proto</span>.<span style="color:#a6e22e">Unmarshal</span>(<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">Payload</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">resp</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">resp</span>, <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;等待进房回包超时&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>    读到 2004（状态）或 2005（结算）为止，二者互斥返回</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">nextBattle</span>(<span style="color:#a6e22e">c</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">client</span>, <span style="color:#a6e22e">deadline</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Time</span>) (<span style="color:#f92672">*</span><span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">BattleStatePush</span>, <span style="color:#f92672">*</span><span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">BattleSettlePush</span>, <span style="color:#66d9ef">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>().<span style="color:#a6e22e">Before</span>(<span style="color:#a6e22e">deadline</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">p</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">c</span>.<span style="color:#a6e22e">next</span>(<span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">p</span> <span style="color:#f92672">==</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">switch</span> <span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">MessageID</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">case</span> <span style="color:#a6e22e">msgState</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">s</span> <span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">BattleStatePush</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">proto</span>.<span style="color:#a6e22e">Unmarshal</span>(<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">Payload</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">s</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">s</span>, <span style="color:#66d9ef">nil</span>, <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">case</span> <span style="color:#a6e22e">msgSettle</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">s</span> <span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">BattleSettlePush</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">proto</span>.<span style="color:#a6e22e">Unmarshal</span>(<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">Payload</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">s</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">s</span>, <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>, <span style="color:#66d9ef">nil</span>, <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;等待战斗推送超时&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>    接着我们再验证断链的场景</p>
+<p>    runReconnect 进房 → 部署 → 中途断线 → 用 roomId 重连 → 验证恢复后续跑 → 收结算</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">c1</span>.close() <span style="color:#75715e">// 模拟客户端断线，服务端房间与 tick 继续</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;--- 关闭连接，模拟断线 ---&#34;</span>)
+</span></span></code></pre></div><p>    用 roomId 重连，检查是否恢复而不是重开 </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">resp2</span>.<span style="color:#a6e22e">Code</span> <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;重连失败 code=%d msg=%s（断线过久房间可能已结束）&#34;</span>, <span style="color:#a6e22e">resp2</span>.<span style="color:#a6e22e">Code</span>, <span style="color:#a6e22e">resp2</span>.<span style="color:#a6e22e">Msg</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;[3] 重连 code=%d roomId=%d seed=%d\n&#34;</span>, <span style="color:#a6e22e">resp2</span>.<span style="color:#a6e22e">Code</span>, <span style="color:#a6e22e">resp2</span>.<span style="color:#a6e22e">RoomId</span>, <span style="color:#a6e22e">resp2</span>.<span style="color:#a6e22e">Seed</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">resp2</span>.<span style="color:#a6e22e">Seed</span> <span style="color:#f92672">!=</span> <span style="color:#a6e22e">resp1</span>.<span style="color:#a6e22e">Seed</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;重连返回 seed=%d 与首次进房 seed=%d 不一致，疑似换了房间&#34;</span>, <span style="color:#a6e22e">resp2</span>.<span style="color:#a6e22e">Seed</span>, <span style="color:#a6e22e">resp1</span>.<span style="color:#a6e22e">Seed</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">state2</span>, <span style="color:#a6e22e">settle2</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">nextBattle</span>(<span style="color:#a6e22e">c2</span>, <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>().<span style="color:#a6e22e">Add</span>(<span style="color:#ae81ff">20</span><span style="color:#f92672">*</span><span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>))
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">settle2</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;重连后直接结算 result=%d，未看到恢复状态&#34;</span>, <span style="color:#a6e22e">settle2</span>.<span style="color:#a6e22e">Result</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">printState</span>(<span style="color:#a6e22e">state2</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">state2</span>.<span style="color:#a6e22e">Frame</span> <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;恢复后帧号仍为 %d，疑似重开而非续跑&#34;</span>, <span style="color:#a6e22e">state2</span>.<span style="color:#a6e22e">Frame</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">state2</span>.<span style="color:#a6e22e">Operators</span>) <span style="color:#f92672">!=</span> len(<span style="color:#a6e22e">last</span>.<span style="color:#a6e22e">Operators</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;恢复后干员数 %d 与断线前 %d 不一致，状态未恢复&#34;</span>, len(<span style="color:#a6e22e">state2</span>.<span style="color:#a6e22e">Operators</span>), len(<span style="color:#a6e22e">last</span>.<span style="color:#a6e22e">Operators</span>))
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    最后从恢复点继续推进到结算。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">deadline2</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>().<span style="color:#a6e22e">Add</span>(<span style="color:#ae81ff">20</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>().<span style="color:#a6e22e">Before</span>(<span style="color:#a6e22e">deadline2</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">state</span>, <span style="color:#a6e22e">settle</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">nextBattle</span>(<span style="color:#a6e22e">c2</span>, <span style="color:#a6e22e">deadline2</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">settle</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">printSettle</span>(<span style="color:#a6e22e">settle</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">settle</span>.<span style="color:#a6e22e">Result</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;验证通过：断线重连后战斗从原进度继续，并正常结算（胜利）&#34;</span>)
+</span></span><span style="display:flex;"><span>				<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;断线重连后结算结果非胜利 result=%d&#34;</span>, <span style="color:#a6e22e">settle</span>.<span style="color:#a6e22e">Result</span>)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">printState</span>(<span style="color:#a6e22e">state</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;重连后等待结算超时&#34;</span>)
+</span></span></code></pre></div><p>   欧克，这个还算简单。下周继续。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="http://localhost:1313/tags/go/">Go</a></li>
+      <li><a href="http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/">游戏开发</a></li>
+      <li><a href="http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/">游戏项目</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="http://localhost:1313/">Strandingwhale | Tech Blog</a></span> · 
+
+    
+    
+    <span>
+        Powered by
+        <a href="https://gohugo.io/?utm_source=papermod" rel="noopener" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

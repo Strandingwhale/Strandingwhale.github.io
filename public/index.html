@@ -119,6 +119,30 @@
 
 <article class="first-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">重连更新
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 今天更新了闪断重连，其他比较简单，就客户端麻烦点，要重写很多东西。
+用坐标逆向求行进距离 断线重连，可以是恢复是因为我每隔10帧保存一次快照，读取快照中的信息来恢复闪断前的状态。而在快照中没有直接保存Dist（行进距离）的原因是，“绕远路就是近路”（当时没想到）。
+总之我们还是先取得敌人的路径点并计算两点间的直线距离
+a, b := enemyPath[i-1], enemyPath[i] dx, dy := b.X-a.X, b.Y-a.Y seg := math.Hypot(dx, dy) 如果seg大于零（a，b间有距离）则算出敌人坐标p.x和p.y在a，b间的什么地方。利用t作为坐标位于a，b间的几分之几处。最后算出具体行进距离。
+t = ((p.X-a.X)*dx &#43; (p.Y-a.Y)*dy) / (seg * seg) t = math.Max(0, math.Min(1, t)) qx, qy := a.X&#43;t*dx, a.Y&#43;t*dy if d := math.Hypot(p.X-qx, p.Y-qy); d &lt; bestD { bestD = d best = acc &#43; t*seg } 重连恢复 要重连恢复，最重要的是保存快照。我设定每10帧数（2秒）保存一次。
+const snapshotIntervalFrames = 10 ... if r.frame%snapshotIntervalFrames == 0 { if data, err := proto.Marshal(state); err == nil { r.snapshots = append(r.snapshots, &amp;BattleSnapshot{Frame: r.frame, Data: data}) } else { logger.Println(&#34;序列化战斗快照失败:&#34;, err) } } 然后是恢复重连，我们要先把旧循环退出。
+close(r.done) 从最近一次快照恢复 mu 保护的状态；无快照则保持当前状态继续
+if err := proto.Unmarshal(r.snapshots[n-1].Data, &amp;state); 然后恢复干员数据和敌人数据、还有链接数据。并跑run函数。
+客户端设置 这一段应该挺多的。首先我们传入basic的验证场景。
+mode = flag.String(&#34;mode&#34;, &#34;basic&#34;, &#34;验证场景：basic | reconnect&#34;) func main() { flag.Parse() var err error switch *mode { case &#34;basic&#34;: err = runBasic() case &#34;reconnect&#34;: err = runReconnect() default: fmt.Println(&#34;未知 -mode:&#34;, *mode) os.Exit(1) } if err != nil { fmt.Println(&#34;失败:&#34;, err) os.Exit(1) } } runBasic 进房 → 部署 → 收状态推送 → 收结算
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-11-01T00:10:00+08:00'>November 1, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 重连更新" href="http://localhost:1313/posts/2026/11/%E9%87%8D%E8%BF%9E%E6%9B%B4%E6%96%B0/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">战斗更新
     </h2>
   </header>
