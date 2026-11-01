@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="noindex, nofollow">
+<title>波次与技能更新 | Strandingwhale | Tech Blog</title>
+<meta name="keywords" content="go, 游戏开发, 游戏项目">
+<meta name="description" content="前言
+    本次更新是敌人的波次和干员撤退、释放技能的更新。下一次是数据库更新。我估计下一周就可以去弄前端了。学学unity，之后再自研引擎。
+波次更新
+    首先我们要配置一些相关数据，并在快照保存中新增加波次下标、当前波次已生成数量、距离下一只生成时间、敌人ID。
+// Wave 一波敌人的配置
+type Wave struct {
+	Count       int     // 本波敌人数量
+	HP          int32   // 每只敌人血量
+	Speed       float64 // 移动速度（格/秒）
+	IntervalSec float64 // 同波内相邻两只的出场间隔（秒）
+}
+
+// waves 波次表：按顺序生成，全部波次生成完且场上清空才算通关
+var waves = []Wave{
+	{Count: 3, HP: 100, Speed: 1.2, IntervalSec: 2.0},
+	{Count: 5, HP: 120, Speed: 1.4, IntervalSec: 1.5},
+}
+
+// 关卡数值（硬编码，暂不读配置表）
+const (
+	enemyConfigID = 1   // 敌人配置ID（下发 EnemyId 用）
+	baseMaxHP     = 1   // 基地生命，漏一只怪即失败
+	operatorMaxHP = 100 // 干员血量（当前不会被攻击，仅展示）
+	attackRange   = 2.5 // 干员攻击半径（格）
+	attackDamage  = 12  // 干员每帧伤害
+	deployCost    = 4   // 部署干员消耗
+	initCost      = 10  // 开局费用
+	maxOperators  = 1   // 场上干员上限
+
+	retreatRefund       = deployCost / 2 // 撤回干员返还的费用
+	skillCost           = 3              // 释放技能消耗的费用
+	skillCooldownFrames = 15             // 技能冷却（帧）
+	skillDamage         = 60             // 技能对射程内敌人造成的一次性伤害
+)
+    按波次表生成敌人，每帧最多生成一只；调用方需持有 r.mu。首先我们要检测当前波次是否小于波次总长，以及这波敌人是否生成完毕。如果都是True则进入下一波。">
+<meta name="author" content="">
+<link rel="canonical" href="http://localhost:1313/posts/2026/11/%E6%B3%A2%E6%AC%A1%E4%B8%8E%E6%8A%80%E8%83%BD%E6%9B%B4%E6%96%B0/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.2fd9135862a3da866393a267370bb97cd812193a02eb63558b88b00f30ec3648.css" integrity="sha256-L9kTWGKj2oZjk6JnNwu5fNgSGToC62NVi4iwDzDsNkg=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/posts/2026/11/%E6%B3%A2%E6%AC%A1%E4%B8%8E%E6%8A%80%E8%83%BD%E6%9B%B4%E6%96%B0/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" accesskey="h" title="Strandingwhale | Tech Blog (Alt + H)">Strandingwhale | Tech Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="http://localhost:1313/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      波次与技能更新
+    </h1>
+    <div class="post-meta">
+
+<span title='2026-11-01T22:10:00+08:00'>November 1, 2026</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="前言">前言<a hidden class="anchor" aria-hidden="true" href="#前言">#</a></h1>
+<p>    本次更新是敌人的波次和干员撤退、释放技能的更新。下一次是数据库更新。我估计下一周就可以去弄前端了。学学unity，之后再自研引擎。</p>
+<h1 id="波次更新">波次更新<a hidden class="anchor" aria-hidden="true" href="#波次更新">#</a></h1>
+<p>    首先我们要配置一些相关数据，并在快照保存中新增加波次下标、当前波次已生成数量、距离下一只生成时间、敌人ID。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span><span style="color:#75715e">// Wave 一波敌人的配置</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Wave</span> <span style="color:#66d9ef">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">Count</span>       <span style="color:#66d9ef">int</span>     <span style="color:#75715e">// 本波敌人数量</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">HP</span>          <span style="color:#66d9ef">int32</span>   <span style="color:#75715e">// 每只敌人血量</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">Speed</span>       <span style="color:#66d9ef">float64</span> <span style="color:#75715e">// 移动速度（格/秒）</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">IntervalSec</span> <span style="color:#66d9ef">float64</span> <span style="color:#75715e">// 同波内相邻两只的出场间隔（秒）</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// waves 波次表：按顺序生成，全部波次生成完且场上清空才算通关</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">waves</span> = []<span style="color:#a6e22e">Wave</span>{
+</span></span><span style="display:flex;"><span>	{<span style="color:#a6e22e">Count</span>: <span style="color:#ae81ff">3</span>, <span style="color:#a6e22e">HP</span>: <span style="color:#ae81ff">100</span>, <span style="color:#a6e22e">Speed</span>: <span style="color:#ae81ff">1.2</span>, <span style="color:#a6e22e">IntervalSec</span>: <span style="color:#ae81ff">2.0</span>},
+</span></span><span style="display:flex;"><span>	{<span style="color:#a6e22e">Count</span>: <span style="color:#ae81ff">5</span>, <span style="color:#a6e22e">HP</span>: <span style="color:#ae81ff">120</span>, <span style="color:#a6e22e">Speed</span>: <span style="color:#ae81ff">1.4</span>, <span style="color:#a6e22e">IntervalSec</span>: <span style="color:#ae81ff">1.5</span>},
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 关卡数值（硬编码，暂不读配置表）</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">enemyConfigID</span> = <span style="color:#ae81ff">1</span>   <span style="color:#75715e">// 敌人配置ID（下发 EnemyId 用）</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">baseMaxHP</span>     = <span style="color:#ae81ff">1</span>   <span style="color:#75715e">// 基地生命，漏一只怪即失败</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">operatorMaxHP</span> = <span style="color:#ae81ff">100</span> <span style="color:#75715e">// 干员血量（当前不会被攻击，仅展示）</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">attackRange</span>   = <span style="color:#ae81ff">2.5</span> <span style="color:#75715e">// 干员攻击半径（格）</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">attackDamage</span>  = <span style="color:#ae81ff">12</span>  <span style="color:#75715e">// 干员每帧伤害</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">deployCost</span>    = <span style="color:#ae81ff">4</span>   <span style="color:#75715e">// 部署干员消耗</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">initCost</span>      = <span style="color:#ae81ff">10</span>  <span style="color:#75715e">// 开局费用</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">maxOperators</span>  = <span style="color:#ae81ff">1</span>   <span style="color:#75715e">// 场上干员上限</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">retreatRefund</span>       = <span style="color:#a6e22e">deployCost</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span> <span style="color:#75715e">// 撤回干员返还的费用</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">skillCost</span>           = <span style="color:#ae81ff">3</span>              <span style="color:#75715e">// 释放技能消耗的费用</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">skillCooldownFrames</span> = <span style="color:#ae81ff">15</span>             <span style="color:#75715e">// 技能冷却（帧）</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">skillDamage</span>         = <span style="color:#ae81ff">60</span>             <span style="color:#75715e">// 技能对射程内敌人造成的一次性伤害</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>    按波次表生成敌人，每帧最多生成一只；调用方需持有 r.mu。首先我们要检测当前波次是否小于波次总长，以及这波敌人是否生成完毕。如果都是True则进入下一波。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">waveIndex</span> &lt; len(<span style="color:#a6e22e">waves</span>) <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">spawned</span> <span style="color:#f92672">&gt;=</span> <span style="color:#a6e22e">waves</span>[<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">waveIndex</span>].<span style="color:#a6e22e">Count</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">waveIndex</span><span style="color:#f92672">++</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">spawned</span> = <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    如果当前波次大于总长则return。</p>
+<p>    如果这波敌人没有出完，就先减去一帧时间（0.2s）。减去后，生成的冷却时间没过完（时间&gt;0）也是retuen。否则读取当前波次的数据，生成敌人，重置冷却时间。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span>    <span style="color:#a6e22e">w</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">waves</span>[<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">waveIndex</span>]
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">instanceSeq</span><span style="color:#f92672">++</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">enemies</span> = append(<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">enemies</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">Enemy</span>{
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">InstanceID</span>: <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">instanceSeq</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">HP</span>:         <span style="color:#a6e22e">w</span>.<span style="color:#a6e22e">HP</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Speed</span>:      <span style="color:#a6e22e">w</span>.<span style="color:#a6e22e">Speed</span>,
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">spawned</span><span style="color:#f92672">++</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">spawnTimer</span> = <span style="color:#a6e22e">w</span>.<span style="color:#a6e22e">IntervalSec</span>
+</span></span></code></pre></div><h1 id="干员撤退与释放技能">干员撤退与释放技能<a hidden class="anchor" aria-hidden="true" href="#干员撤退与释放技能">#</a></h1>
+<p>    撤回干员，要返还部分费用；返回错误码、提示与剩余费用</p>
+<p>    我们可以直接将第i个干员（要撤退的）以后的位置都向前移动一位，覆盖掉第i个干员。然后返还费用。这个简单</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">operators</span> = append(<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">operators</span>[:<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">operators</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>:]<span style="color:#f92672">...</span>)
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">cost</span> <span style="color:#f92672">+=</span> <span style="color:#a6e22e">retreatRefund</span>
+</span></span></code></pre></div><p>    释放干员技能：校验在场、冷却与费用，对射程内敌人造成一次性伤害。</p>
+<p>    先循环检测到对应发干员，然后检测是否能放技能。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">op</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Operator</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">o</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">operators</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">o</span>.<span style="color:#a6e22e">ID</span> <span style="color:#f92672">==</span> <span style="color:#a6e22e">opID</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">op</span> = <span style="color:#a6e22e">o</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">op</span> <span style="color:#f92672">==</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">codeBadParam</span>, <span style="color:#e6db74">&#34;干员不在场上&#34;</span>, <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">cost</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">frame</span> &lt; <span style="color:#a6e22e">op</span>.<span style="color:#a6e22e">SkillReadyFrame</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">codeBadParam</span>, <span style="color:#e6db74">&#34;技能冷却中&#34;</span>, <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">cost</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">cost</span> &lt; <span style="color:#a6e22e">skillCost</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">codeBadParam</span>, <span style="color:#e6db74">&#34;费用不足&#34;</span>, <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">cost</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    如果能放，减去对应的费用（暂时用费用代替技能条，方便点），并给予在范围内的敌人伤害。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">damage</span>, <span style="color:#a6e22e">hits</span> <span style="color:#66d9ef">int32</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">e</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">enemies</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">HP</span> <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">p</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">pointAtDistance</span>(<span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">Dist</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">Hypot</span>(<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">X</span><span style="color:#f92672">-</span>float64(<span style="color:#a6e22e">op</span>.<span style="color:#a6e22e">X</span>), <span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">Y</span><span style="color:#f92672">-</span>float64(<span style="color:#a6e22e">op</span>.<span style="color:#a6e22e">Y</span>)) <span style="color:#f92672">&lt;=</span> <span style="color:#a6e22e">attackRange</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">HP</span> <span style="color:#f92672">-=</span> <span style="color:#a6e22e">skillDamage</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">damage</span> <span style="color:#f92672">+=</span> <span style="color:#a6e22e">skillDamage</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">hits</span><span style="color:#f92672">++</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    对于客户端的更新，今后就不多说了，因为都是一些简陋的临时测试代码。没什么技术含量。下周见，bey。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="http://localhost:1313/tags/go/">Go</a></li>
+      <li><a href="http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/">游戏开发</a></li>
+      <li><a href="http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/">游戏项目</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="http://localhost:1313/">Strandingwhale | Tech Blog</a></span> · 
+
+    
+    
+    <span>
+        Powered by
+        <a href="https://gohugo.io/?utm_source=papermod" rel="noopener" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -118,6 +118,23 @@
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">波次与技能更新
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 本次更新是敌人的波次和干员撤退、释放技能的更新。下一次是数据库更新。我估计下一周就可以去弄前端了。学学unity，之后再自研引擎。
+波次更新 首先我们要配置一些相关数据，并在快照保存中新增加波次下标、当前波次已生成数量、距离下一只生成时间、敌人ID。
+// Wave 一波敌人的配置 type Wave struct { Count int // 本波敌人数量 HP int32 // 每只敌人血量 Speed float64 // 移动速度（格/秒） IntervalSec float64 // 同波内相邻两只的出场间隔（秒） } // waves 波次表：按顺序生成，全部波次生成完且场上清空才算通关 var waves = []Wave{ {Count: 3, HP: 100, Speed: 1.2, IntervalSec: 2.0}, {Count: 5, HP: 120, Speed: 1.4, IntervalSec: 1.5}, } // 关卡数值（硬编码，暂不读配置表） const ( enemyConfigID = 1 // 敌人配置ID（下发 EnemyId 用） baseMaxHP = 1 // 基地生命，漏一只怪即失败 operatorMaxHP = 100 // 干员血量（当前不会被攻击，仅展示） attackRange = 2.5 // 干员攻击半径（格） attackDamage = 12 // 干员每帧伤害 deployCost = 4 // 部署干员消耗 initCost = 10 // 开局费用 maxOperators = 1 // 场上干员上限 retreatRefund = deployCost / 2 // 撤回干员返还的费用 skillCost = 3 // 释放技能消耗的费用 skillCooldownFrames = 15 // 技能冷却（帧） skillDamage = 60 // 技能对射程内敌人造成的一次性伤害 ) 按波次表生成敌人，每帧最多生成一只；调用方需持有 r.mu。首先我们要检测当前波次是否小于波次总长，以及这波敌人是否生成完毕。如果都是True则进入下一波。
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-11-01T22:10:00+08:00'>November 1, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 波次与技能更新" href="http://localhost:1313/posts/2026/11/%E6%B3%A2%E6%AC%A1%E4%B8%8E%E6%8A%80%E8%83%BD%E6%9B%B4%E6%96%B0/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">重连更新
     </h2>
   </header>

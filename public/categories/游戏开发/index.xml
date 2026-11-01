@@ -6,8 +6,49 @@
     <description>Recent content in 游戏开发 on Strandingwhale | Tech Blog</description>
     <generator>Hugo</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Sun, 01 Nov 2026 00:10:00 +0800</lastBuildDate>
+    <lastBuildDate>Sun, 01 Nov 2026 22:10:00 +0800</lastBuildDate>
     <atom:link href="http://localhost:1313/categories/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>波次与技能更新</title>
+      <link>http://localhost:1313/posts/2026/11/%E6%B3%A2%E6%AC%A1%E4%B8%8E%E6%8A%80%E8%83%BD%E6%9B%B4%E6%96%B0/</link>
+      <pubDate>Sun, 01 Nov 2026 22:10:00 +0800</pubDate>
+      <guid>http://localhost:1313/posts/2026/11/%E6%B3%A2%E6%AC%A1%E4%B8%8E%E6%8A%80%E8%83%BD%E6%9B%B4%E6%96%B0/</guid>
+      <description>&lt;h1 id=&#34;前言&#34;&gt;前言&lt;/h1&gt;
+&lt;p&gt;    本次更新是敌人的波次和干员撤退、释放技能的更新。下一次是数据库更新。我估计下一周就可以去弄前端了。学学unity，之后再自研引擎。&lt;/p&gt;
+&lt;h1 id=&#34;波次更新&#34;&gt;波次更新&lt;/h1&gt;
+&lt;p&gt;    首先我们要配置一些相关数据，并在快照保存中新增加波次下标、当前波次已生成数量、距离下一只生成时间、敌人ID。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;&#34;&gt;&lt;code class=&#34;language-Go&#34; data-lang=&#34;Go&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Wave 一波敌人的配置&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;type&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Wave&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;struct&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;Count&lt;/span&gt;       &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt;     &lt;span style=&#34;color:#75715e&#34;&gt;// 本波敌人数量&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;HP&lt;/span&gt;          &lt;span style=&#34;color:#66d9ef&#34;&gt;int32&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// 每只敌人血量&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;Speed&lt;/span&gt;       &lt;span style=&#34;color:#66d9ef&#34;&gt;float64&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// 移动速度（格/秒）&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;IntervalSec&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;float64&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// 同波内相邻两只的出场间隔（秒）&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// waves 波次表：按顺序生成，全部波次生成完且场上清空才算通关&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;var&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;waves&lt;/span&gt; = []&lt;span style=&#34;color:#a6e22e&#34;&gt;Wave&lt;/span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	{&lt;span style=&#34;color:#a6e22e&#34;&gt;Count&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;HP&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;100&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;Speed&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;1.2&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;IntervalSec&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;2.0&lt;/span&gt;},
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	{&lt;span style=&#34;color:#a6e22e&#34;&gt;Count&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;HP&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;120&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;Speed&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;1.4&lt;/span&gt;, &lt;span style=&#34;color:#a6e22e&#34;&gt;IntervalSec&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;1.5&lt;/span&gt;},
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// 关卡数值（硬编码，暂不读配置表）&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; (
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;enemyConfigID&lt;/span&gt; = &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// 敌人配置ID（下发 EnemyId 用）&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;baseMaxHP&lt;/span&gt;     = &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// 基地生命，漏一只怪即失败&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;operatorMaxHP&lt;/span&gt; = &lt;span style=&#34;color:#ae81ff&#34;&gt;100&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// 干员血量（当前不会被攻击，仅展示）&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;attackRange&lt;/span&gt;   = &lt;span style=&#34;color:#ae81ff&#34;&gt;2.5&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// 干员攻击半径（格）&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;attackDamage&lt;/span&gt;  = &lt;span style=&#34;color:#ae81ff&#34;&gt;12&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// 干员每帧伤害&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;deployCost&lt;/span&gt;    = &lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// 部署干员消耗&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;initCost&lt;/span&gt;      = &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;// 开局费用&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;maxOperators&lt;/span&gt;  = &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;   &lt;span style=&#34;color:#75715e&#34;&gt;// 场上干员上限&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;retreatRefund&lt;/span&gt;       = &lt;span style=&#34;color:#a6e22e&#34;&gt;deployCost&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;// 撤回干员返还的费用&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;skillCost&lt;/span&gt;           = &lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;              &lt;span style=&#34;color:#75715e&#34;&gt;// 释放技能消耗的费用&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;skillCooldownFrames&lt;/span&gt; = &lt;span style=&#34;color:#ae81ff&#34;&gt;15&lt;/span&gt;             &lt;span style=&#34;color:#75715e&#34;&gt;// 技能冷却（帧）&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;	&lt;span style=&#34;color:#a6e22e&#34;&gt;skillDamage&lt;/span&gt;         = &lt;span style=&#34;color:#ae81ff&#34;&gt;60&lt;/span&gt;             &lt;span style=&#34;color:#75715e&#34;&gt;// 技能对射程内敌人造成的一次性伤害&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;    按波次表生成敌人，每帧最多生成一只；调用方需持有 r.mu。首先我们要检测当前波次是否小于波次总长，以及这波敌人是否生成完毕。如果都是True则进入下一波。&lt;/p&gt;</description>
+    </item>
     <item>
       <title>重连更新</title>
       <link>http://localhost:1313/posts/2026/11/%E9%87%8D%E8%BF%9E%E6%9B%B4%E6%96%B0/</link>
