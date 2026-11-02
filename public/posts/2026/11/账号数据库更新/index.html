@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="noindex, nofollow">
+<title>账号数据库更新 | Strandingwhale | Tech Blog</title>
+<meta name="keywords" content="go, 游戏开发, 游戏项目">
+<meta name="description" content="前言
+    此次更新为账号数据库的更新。数据包括角色名、等级、体力、经验、金币等
+数据库格式
+    这些储存在MySQL中。挂载到 MySQL 容器内部的/docker-entrypoint-initdb.d启用docker的时候自动建立。
+-- 玩家角色表：基础信息，uid 关联 account.id
+CREATE TABLE IF NOT EXISTS player (
+    uid        BIGINT UNSIGNED PRIMARY KEY COMMENT &#39;玩家ID = account.id&#39;,
+    name       VARCHAR(64) NOT NULL DEFAULT &#39;&#39; COMMENT &#39;角色名&#39;,
+    level      INT         NOT NULL DEFAULT 1 COMMENT &#39;等级&#39;,
+    stamina    INT         NOT NULL DEFAULT 120 COMMENT &#39;体力&#39;,
+    exp        INT         NOT NULL DEFAULT 0 COMMENT &#39;经验（战斗结算累积）&#39;,
+    gold       INT         NOT NULL DEFAULT 0 COMMENT &#39;金币（战斗结算累积）&#39;,
+    created_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (uid) REFERENCES account (id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+-- 战斗记录表：每场结算落一条，uid 关联 player.uid
+CREATE TABLE IF NOT EXISTS battle_record (
+    id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY COMMENT &#39;记录ID&#39;,
+    uid          BIGINT UNSIGNED NOT NULL COMMENT &#39;玩家ID&#39;,
+    result       INT         NOT NULL COMMENT &#39;0 胜 / 1 败&#39;,
+    score        INT         NOT NULL DEFAULT 0 COMMENT &#39;结算分数&#39;,
+    duration_sec INT         NOT NULL DEFAULT 0 COMMENT &#39;战斗时长（秒）&#39;,
+    rewards      VARCHAR(255) NOT NULL DEFAULT &#39;&#39; COMMENT &#39;奖励描述，如 exp:100,gold:500&#39;,
+    created_at   TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (uid) REFERENCES player (uid)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+数据库请求
+    在我们此前讲过的”bettle“的“room”文件中创建一条reportSettle 函数作为客户端连接 DataSave，发送 3000 写战斗记录请求并读取回包。">
+<meta name="author" content="">
+<link rel="canonical" href="http://localhost:1313/posts/2026/11/%E8%B4%A6%E5%8F%B7%E6%95%B0%E6%8D%AE%E5%BA%93%E6%9B%B4%E6%96%B0/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.2fd9135862a3da866393a267370bb97cd812193a02eb63558b88b00f30ec3648.css" integrity="sha256-L9kTWGKj2oZjk6JnNwu5fNgSGToC62NVi4iwDzDsNkg=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/posts/2026/11/%E8%B4%A6%E5%8F%B7%E6%95%B0%E6%8D%AE%E5%BA%93%E6%9B%B4%E6%96%B0/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" accesskey="h" title="Strandingwhale | Tech Blog (Alt + H)">Strandingwhale | Tech Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="http://localhost:1313/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      账号数据库更新
+    </h1>
+    <div class="post-meta">
+
+<span title='2026-11-02T13:10:00+08:00'>November 2, 2026</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="前言">前言<a hidden class="anchor" aria-hidden="true" href="#前言">#</a></h1>
+<p>    此次更新为账号数据库的更新。数据包括角色名、等级、体力、经验、金币等</p>
+<h1 id="数据库格式">数据库格式<a hidden class="anchor" aria-hidden="true" href="#数据库格式">#</a></h1>
+<p>    这些储存在MySQL中。挂载到 MySQL 容器内部的<code>/docker-entrypoint-initdb.d启用docker的时候自动建立。</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-SQL" data-lang="SQL"><span style="display:flex;"><span><span style="color:#75715e">-- 玩家角色表：基础信息，uid 关联 account.id
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#66d9ef">IF</span> <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">EXISTS</span> player (
+</span></span><span style="display:flex;"><span>    uid        BIGINT UNSIGNED <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;玩家ID = account.id&#39;</span>,
+</span></span><span style="display:flex;"><span>    name       VARCHAR(<span style="color:#ae81ff">64</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#e6db74">&#39;&#39;</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;角色名&#39;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">level</span>      INT         <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;等级&#39;</span>,
+</span></span><span style="display:flex;"><span>    stamina    INT         <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">120</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;体力&#39;</span>,
+</span></span><span style="display:flex;"><span>    exp        INT         <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;经验（战斗结算累积）&#39;</span>,
+</span></span><span style="display:flex;"><span>    gold       INT         <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;金币（战斗结算累积）&#39;</span>,
+</span></span><span style="display:flex;"><span>    created_at <span style="color:#66d9ef">TIMESTAMP</span>   <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">CURRENT_TIMESTAMP</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">FOREIGN</span> <span style="color:#66d9ef">KEY</span> (uid) <span style="color:#66d9ef">REFERENCES</span> account (id)
+</span></span><span style="display:flex;"><span>) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> utf8mb4;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">-- 战斗记录表：每场结算落一条，uid 关联 player.uid
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#66d9ef">IF</span> <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">EXISTS</span> battle_record (
+</span></span><span style="display:flex;"><span>    id           BIGINT UNSIGNED AUTO_INCREMENT <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;记录ID&#39;</span>,
+</span></span><span style="display:flex;"><span>    uid          BIGINT UNSIGNED <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;玩家ID&#39;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">result</span>       INT         <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;0 胜 / 1 败&#39;</span>,
+</span></span><span style="display:flex;"><span>    score        INT         <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;结算分数&#39;</span>,
+</span></span><span style="display:flex;"><span>    duration_sec INT         <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;战斗时长（秒）&#39;</span>,
+</span></span><span style="display:flex;"><span>    rewards      VARCHAR(<span style="color:#ae81ff">255</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#e6db74">&#39;&#39;</span> <span style="color:#66d9ef">COMMENT</span> <span style="color:#e6db74">&#39;奖励描述，如 exp:100,gold:500&#39;</span>,
+</span></span><span style="display:flex;"><span>    created_at   <span style="color:#66d9ef">TIMESTAMP</span>   <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span> <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">CURRENT_TIMESTAMP</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">FOREIGN</span> <span style="color:#66d9ef">KEY</span> (uid) <span style="color:#66d9ef">REFERENCES</span> player (uid)
+</span></span><span style="display:flex;"><span>) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> utf8mb4;
+</span></span></code></pre></div><h1 id="数据库请求">数据库请求<a hidden class="anchor" aria-hidden="true" href="#数据库请求">#</a></h1>
+<p>    在我们此前讲过的”bettle“的“room”文件中创建一条reportSettle 函数作为客户端连接 DataSave，发送 3000 写战斗记录请求并读取回包。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>    <span style="color:#a6e22e">body</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">json</span>.<span style="color:#a6e22e">Marshal</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">datasave</span>.<span style="color:#a6e22e">SaveBattleRecordReq</span>{
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">UID</span>:         <span style="color:#a6e22e">uid</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Result</span>:      <span style="color:#a6e22e">result</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Score</span>:       <span style="color:#a6e22e">score</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">DurationSec</span>: <span style="color:#a6e22e">duration</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Rewards</span>:     <span style="color:#a6e22e">rewards</span>,
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;序列化战斗记录失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">pkt</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">common</span>.<span style="color:#a6e22e">Encode</span>(<span style="color:#a6e22e">datasave</span>.<span style="color:#a6e22e">MsgSaveBattleRecord</span>, <span style="color:#ae81ff">0</span>, <span style="color:#a6e22e">body</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;编码战斗记录失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">conn</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">net</span>.<span style="color:#a6e22e">DialTimeout</span>(<span style="color:#e6db74">&#34;tcp&#34;</span>, <span style="color:#a6e22e">dataSaveAddr</span>, <span style="color:#ae81ff">2</span><span style="color:#f92672">*</span><span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;连接datasave服务失败，战斗记录未落库: %v&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">defer</span> <span style="color:#a6e22e">conn</span>.<span style="color:#a6e22e">Close</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">_</span> = <span style="color:#a6e22e">conn</span>.<span style="color:#a6e22e">SetDeadline</span>(<span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>().<span style="color:#a6e22e">Add</span>(<span style="color:#ae81ff">3</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Second</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">conn</span>.<span style="color:#a6e22e">Write</span>(<span style="color:#a6e22e">pkt</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;发送战斗记录失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    向DataASave发送请求后读取回包，检测是否落库成功。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span>    <span style="color:#a6e22e">cache</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">bytes</span>.<span style="color:#a6e22e">Buffer</span>{}
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">readBuf</span> <span style="color:#f92672">:=</span> make([]<span style="color:#66d9ef">byte</span>, <span style="color:#ae81ff">4096</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">n</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">conn</span>.<span style="color:#a6e22e">Read</span>(<span style="color:#a6e22e">readBuf</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;等待datasave回包失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">cache</span>.<span style="color:#a6e22e">Write</span>(<span style="color:#a6e22e">readBuf</span>[:<span style="color:#a6e22e">n</span>])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">p</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">common</span>.<span style="color:#a6e22e">Decode</span>(<span style="color:#a6e22e">cache</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;datasave回包解码失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">p</span> <span style="color:#f92672">==</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">resp</span> <span style="color:#a6e22e">datasave</span>.<span style="color:#a6e22e">SaveBattleRecordResp</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">json</span>.<span style="color:#a6e22e">Unmarshal</span>(<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">Payload</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">resp</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;解析datasave回包失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Code</span> <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;战斗记录落库失败：code=%d msg=%s&#34;</span>, <span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Code</span>, <span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Msg</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;战斗记录落库成功：uid=%d exp+%d gold+%d&#34;</span>, <span style="color:#a6e22e">uid</span>, <span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">ExpGain</span>, <span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">GoldGain</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><h1 id="战斗的服务文件">战斗的服务文件<a hidden class="anchor" aria-hidden="true" href="#战斗的服务文件">#</a></h1>
+<p>    DataSave 服务：内部服务，接收其他服务（如 battle）的写库请求。 </p>
+<p>    内部协议沿用 common.Encode/Decode 的包格式，负载用 JSON（不对客户端暴露，省去 proto 代码生成）</p>
+<p>    先定义几个MsgId</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">MsgSaveBattleRecord</span> <span style="color:#66d9ef">uint16</span> = <span style="color:#ae81ff">3000</span> <span style="color:#75715e">// 写战斗记录并累加 exp/gold</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">MsgDeductStamina</span>    <span style="color:#66d9ef">uint16</span> = <span style="color:#ae81ff">3001</span> <span style="color:#75715e">// 扣体力</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">MsgGetRole</span>          <span style="color:#66d9ef">uint16</span> = <span style="color:#ae81ff">3002</span> <span style="color:#75715e">// 查角色</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">msgSaveBattleRecordResp</span> <span style="color:#66d9ef">uint16</span> = <span style="color:#ae81ff">3100</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">msgDeductStaminaResp</span>    <span style="color:#66d9ef">uint16</span> = <span style="color:#ae81ff">3101</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">msgGetRoleResp</span>          <span style="color:#66d9ef">uint16</span> = <span style="color:#ae81ff">3102</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>   在链接上数据库后开始处理内部请求，然后就是handleConn解码、按MsgId分发、回包（和之前几篇的handleConn差不多就不花费篇幅了）。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span><span style="color:#75715e">// Serve 接受连接并处理内部请求；阻塞运行</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">Serve</span>(<span style="color:#a6e22e">db</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">sql</span>.<span style="color:#a6e22e">DB</span>, <span style="color:#a6e22e">listener</span> <span style="color:#a6e22e">net</span>.<span style="color:#a6e22e">Listener</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">s</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">server</span>{<span style="color:#a6e22e">db</span>: <span style="color:#a6e22e">db</span>}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">conn</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">listener</span>.<span style="color:#a6e22e">Accept</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">go</span> <span style="color:#a6e22e">s</span>.<span style="color:#a6e22e">handleConn</span>(<span style="color:#a6e22e">conn</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>    MsgId=3000就是写一条战斗记录，并在同一事务里累加玩家 exp/gold。</p>
+<p>    先从请求数据中解析。利用另外一个函数获得经验、金币的获得数量</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">req</span> <span style="color:#a6e22e">SaveBattleRecordReq</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">json</span>.<span style="color:#a6e22e">Unmarshal</span>(<span style="color:#a6e22e">payload</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">req</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;解析 SaveBattleRecordReq 失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SaveBattleRecordResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeBadParam</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;请求格式错误&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SaveBattleRecordResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeBadParam</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;uid 不能为 0&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">expGain</span>, <span style="color:#a6e22e">goldGain</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">parseRewards</span>(<span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Rewards</span>)
+</span></span></code></pre></div><p>    parseRewards这个函数是 从 &ldquo;exp:100&rdquo;、&ldquo;gold:500&rdquo; 形式的奖励描述里解析累加值</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">parseRewards</span>(<span style="color:#a6e22e">rewards</span> []<span style="color:#66d9ef">string</span>) (<span style="color:#a6e22e">exp</span>, <span style="color:#a6e22e">gold</span> <span style="color:#66d9ef">int32</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">r</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">rewards</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">k</span>, <span style="color:#a6e22e">v</span>, <span style="color:#a6e22e">ok</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">Cut</span>(<span style="color:#a6e22e">r</span>, <span style="color:#e6db74">&#34;:&#34;</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">ok</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">n</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">strconv</span>.<span style="color:#a6e22e">Atoi</span>(<span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">TrimSpace</span>(<span style="color:#a6e22e">v</span>))
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">switch</span> <span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">TrimSpace</span>(<span style="color:#a6e22e">k</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">case</span> <span style="color:#e6db74">&#34;exp&#34;</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">exp</span> <span style="color:#f92672">+=</span> int32(<span style="color:#a6e22e">n</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">case</span> <span style="color:#e6db74">&#34;gold&#34;</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">gold</span> <span style="color:#f92672">+=</span> int32(<span style="color:#a6e22e">n</span>)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">exp</span>, <span style="color:#a6e22e">gold</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>    继续我们要开启事务对象</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span><span style="color:#a6e22e">tx</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">s</span>.<span style="color:#a6e22e">db</span>.<span style="color:#a6e22e">Begin</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;开启事务失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SaveBattleRecordResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">defer</span> <span style="color:#a6e22e">tx</span>.<span style="color:#a6e22e">Rollback</span>()
+</span></span></code></pre></div><p>    再确认玩家存在，避免外键失败时错误信息含糊</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">exist</span> <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">tx</span>.<span style="color:#a6e22e">QueryRow</span>(<span style="color:#e6db74">&#34;SELECT 1 FROM player WHERE uid = ?&#34;</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>).<span style="color:#a6e22e">Scan</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">exist</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">Is</span>(<span style="color:#a6e22e">err</span>, <span style="color:#a6e22e">sql</span>.<span style="color:#a6e22e">ErrNoRows</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;写战斗记录失败：玩家 uid=%d 不存在&#34;</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SaveBattleRecordResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeNotFound</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;玩家不存在&#34;</span>}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;查询玩家失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SaveBattleRecordResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>   之后写入战斗记录和累加玩家奖励。并提交事务。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span>	<span style="color:#a6e22e">rewards</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">Join</span>(<span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Rewards</span>, <span style="color:#e6db74">&#34;,&#34;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">tx</span>.<span style="color:#a6e22e">Exec</span>(
+</span></span><span style="display:flex;"><span>		<span style="color:#e6db74">&#34;INSERT INTO battle_record (uid, result, score, duration_sec, rewards) VALUES (?, ?, ?, ?, ?)&#34;</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Result</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Score</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">DurationSec</span>, <span style="color:#a6e22e">rewards</span>,
+</span></span><span style="display:flex;"><span>	); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;写入战斗记录失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SaveBattleRecordResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">tx</span>.<span style="color:#a6e22e">Exec</span>(
+</span></span><span style="display:flex;"><span>		<span style="color:#e6db74">&#34;UPDATE player SET exp = exp + ?, gold = gold + ? WHERE uid = ?&#34;</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">expGain</span>, <span style="color:#a6e22e">goldGain</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>,
+</span></span><span style="display:flex;"><span>	); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;累加玩家奖励失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SaveBattleRecordResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">tx</span>.<span style="color:#a6e22e">Commit</span>(); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;提交事务失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SaveBattleRecordResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    handleDeductStamina 函数是原子扣体力：stamina &gt;= amount 才更新，不足则回包剩余体力。由于这里只用一条SQL语句所以就不用启动事务了。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>	<span style="color:#a6e22e">res</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">s</span>.<span style="color:#a6e22e">db</span>.<span style="color:#a6e22e">Exec</span>(
+</span></span><span style="display:flex;"><span>		<span style="color:#e6db74">&#34;UPDATE player SET stamina = stamina - ? WHERE uid = ? AND stamina &gt;= ?&#34;</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Amount</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Amount</span>,
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;扣除体力失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">DeductStaminaResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">n</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">res</span>.<span style="color:#a6e22e">RowsAffected</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;读取受影响行数失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">DeductStaminaResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    n, err := res.RowsAffected()是用于检测是否玩家存在且体力 ≥ 扣减量，如果是，则n=1，否则，n=0.</p>
+<p>    如果n=0，就查询剩余体力并回包。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">n</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">stamina</span> <span style="color:#66d9ef">int32</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">s</span>.<span style="color:#a6e22e">db</span>.<span style="color:#a6e22e">QueryRow</span>(<span style="color:#e6db74">&#34;SELECT stamina FROM player WHERE uid = ?&#34;</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>).<span style="color:#a6e22e">Scan</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">stamina</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">Is</span>(<span style="color:#a6e22e">err</span>, <span style="color:#a6e22e">sql</span>.<span style="color:#a6e22e">ErrNoRows</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">DeductStaminaResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeNotFound</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;玩家不存在&#34;</span>}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;查询体力失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">DeductStaminaResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">DeductStaminaResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeStaminaNotEnough</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;体力不足&#34;</span>, <span style="color:#a6e22e">Remaining</span>: <span style="color:#a6e22e">stamina</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    如果n=1，就发送体力成功扣除的回包。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span>	<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">stamina</span> <span style="color:#66d9ef">int32</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">s</span>.<span style="color:#a6e22e">db</span>.<span style="color:#a6e22e">QueryRow</span>(<span style="color:#e6db74">&#34;SELECT stamina FROM player WHERE uid = ?&#34;</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>).<span style="color:#a6e22e">Scan</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">stamina</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;查询剩余体力失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">DeductStaminaResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;扣除体力：uid=%d -%d，剩余%d&#34;</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Amount</span>, <span style="color:#a6e22e">stamina</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">DeductStaminaResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeOK</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;ok&#34;</span>, <span style="color:#a6e22e">Remaining</span>: <span style="color:#a6e22e">stamina</span>}
+</span></span></code></pre></div><p>    最后是handleGetRole 函数，查角色基础信息。很简单，也是和上面的SQL语句的查询差不多。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>	<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">resp</span> <span style="color:#a6e22e">GetRoleResp</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">s</span>.<span style="color:#a6e22e">db</span>.<span style="color:#a6e22e">QueryRow</span>(
+</span></span><span style="display:flex;"><span>		<span style="color:#e6db74">&#34;SELECT name, level, stamina, exp, gold FROM player WHERE uid = ?&#34;</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>,
+</span></span><span style="display:flex;"><span>	).<span style="color:#a6e22e">Scan</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Name</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Level</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Stamina</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Exp</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Gold</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Code</span> = <span style="color:#a6e22e">codeOK</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">Msg</span> = <span style="color:#e6db74">&#34;ok&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">UID</span> = <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">UID</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">resp</span>
+</span></span></code></pre></div><p>    好了，今天到这里。我还要去做6级试卷。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="http://localhost:1313/tags/go/">Go</a></li>
+      <li><a href="http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/">游戏开发</a></li>
+      <li><a href="http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/">游戏项目</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="http://localhost:1313/">Strandingwhale | Tech Blog</a></span> · 
+
+    
+    
+    <span>
+        Powered by
+        <a href="https://gohugo.io/?utm_source=papermod" rel="noopener" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

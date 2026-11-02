@@ -118,6 +118,23 @@
 
 <article class="post-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">账号数据库更新
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 此次更新为账号数据库的更新。数据包括角色名、等级、体力、经验、金币等
+数据库格式 这些储存在MySQL中。挂载到 MySQL 容器内部的/docker-entrypoint-initdb.d启用docker的时候自动建立。
+-- 玩家角色表：基础信息，uid 关联 account.id CREATE TABLE IF NOT EXISTS player ( uid BIGINT UNSIGNED PRIMARY KEY COMMENT &#39;玩家ID = account.id&#39;, name VARCHAR(64) NOT NULL DEFAULT &#39;&#39; COMMENT &#39;角色名&#39;, level INT NOT NULL DEFAULT 1 COMMENT &#39;等级&#39;, stamina INT NOT NULL DEFAULT 120 COMMENT &#39;体力&#39;, exp INT NOT NULL DEFAULT 0 COMMENT &#39;经验（战斗结算累积）&#39;, gold INT NOT NULL DEFAULT 0 COMMENT &#39;金币（战斗结算累积）&#39;, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (uid) REFERENCES account (id) ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4; -- 战斗记录表：每场结算落一条，uid 关联 player.uid CREATE TABLE IF NOT EXISTS battle_record ( id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY COMMENT &#39;记录ID&#39;, uid BIGINT UNSIGNED NOT NULL COMMENT &#39;玩家ID&#39;, result INT NOT NULL COMMENT &#39;0 胜 / 1 败&#39;, score INT NOT NULL DEFAULT 0 COMMENT &#39;结算分数&#39;, duration_sec INT NOT NULL DEFAULT 0 COMMENT &#39;战斗时长（秒）&#39;, rewards VARCHAR(255) NOT NULL DEFAULT &#39;&#39; COMMENT &#39;奖励描述，如 exp:100,gold:500&#39;, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (uid) REFERENCES player (uid) ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4; 数据库请求 在我们此前讲过的”bettle“的“room”文件中创建一条reportSettle 函数作为客户端连接 DataSave，发送 3000 写战斗记录请求并读取回包。
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-11-02T13:10:00+08:00'>November 2, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 账号数据库更新" href="http://localhost:1313/posts/2026/11/%E8%B4%A6%E5%8F%B7%E6%95%B0%E6%8D%AE%E5%BA%93%E6%9B%B4%E6%96%B0/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">波次与技能更新
     </h2>
   </header>
@@ -287,28 +304,12 @@ n, err := conn.Read(readBuf) if p.MessageID == 1001 { body := string(p.Payload) 
 <span title='2026-10-22T13:30:00+08:00'>October 22, 2026</span></footer>
   <a class="entry-link" aria-label="post link to 第一个新文件“packet”" href="http://localhost:1313/posts/2026/10/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/"></a>
 </article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2 class="entry-hint-parent">开始和近期项目计划
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>前言 早上好git pages和博客园的读者们，现在是2026年的10月20号，距离期末只剩下半个学期了，时间过去的真快。感觉还有好多事没开始，最近也是忙得要死。不过有一点庆幸的是这个学期的课程作业终于做完了，是一个日历，其实本体很简单，只是学习怎么用MySQL花了的时间。之后总算有时间去构造我的超级项目了。
-这个项目肯定会是一个超级好玩，而且让我简历超级加分的东西。虽然我还不知道要写点什么。那就一点一点挤出来把。
-前言先到这了，我还是第一次写博客，也不知道要说什么，但事情总会变好的，像《献给阿尔及农的花束》的主角一样，越写越好，不过我可没打算做前额叶手术。
-项目计划 好的项目计划是这样，我要做一个分布式塔防游戏项目，因为我喜欢玩明日方舟和kr。
-目标：单机塔防对局，服务器计算，分布式多服务拆分；客户端仅做表层，只转发指令、渲染画面，不参与伤害/AI判定。
-技术栈：Go、TCP、Protobuf、Linux、MySQL、Redis、Docker Compose、Prometheus&#43;Grafana、wrk压测
-配套：极简Unity客户端
-明确不做 为了控制工作量 防止无限膨胀：充值、支付；社交、好友、工会、跨服匹配；复杂动画、高质量美术资源；跨服务器排行榜；反作弊系统。
-</p>
-  </div>
-  <footer class="entry-footer">
-
-<span title='2026-10-19T20:00:00+08:00'>October 19, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 开始和近期项目计划" href="http://localhost:1313/posts/2026/10/%E5%BC%80%E5%A7%8B%E5%92%8C%E8%BF%91%E6%9C%9F%E9%A1%B9%E7%9B%AE%E8%AE%A1%E5%88%92/"></a>
-</article>
+<footer class="page-footer">
+  <nav class="pagination">
+    <a class="next" href="http://localhost:1313/posts/page/2/">Next&nbsp;&nbsp;»
+    </a>
+  </nav>
+</footer>
     </main>
     
 <footer class="footer">
