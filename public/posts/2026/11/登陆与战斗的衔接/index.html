@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="noindex, nofollow">
+<title>登陆与战斗的衔接 | Strandingwhale | Tech Blog</title>
+<meta name="keywords" content="go, 游戏开发, 游戏项目">
+<meta name="description" content="前言
+    这次更新应该是做客户端前的倒数第三次服务端更新了。本次更新的量比较少，主要是因为期中的任务有点多。好了让我们开始把。
+战斗链接
+    我在战斗服务中加入了检测Uid的段落，以便后面进房扣除体力。
+	if req.Uid == 0 {
+		return &amp;api.EnterRoomResp{Code: codeBadParam, Msg: &#34;uid 不能为 0，请先登录&#34;}
+	}
+    进房扣 1 点体力；体力不足或玩家不存在时禁止进房
+	if code, msg := deductStamina(req.Uid); code != codeOK {
+		logger.Printf(&#34;玩家 uid=%d 进房失败：扣体力 code=%d msg=%s&#34;, req.Uid, code, msg)
+		return &amp;api.EnterRoomResp{Code: code, Msg: msg}
+	}
+账号链接
+    我在登陆账号时增加了检查角色是否缺失的函数，如果存在则扫描角色信息
+	// 角色信息：注册时已建 player 行；老账号缺失时按零值返回，不阻断登录
+	var role api.LoginResp
+	roleErr := db.QueryRow(
+		&#34;SELECT level, stamina, exp, gold FROM player WHERE uid = ?&#34;, uid,
+	).Scan(&amp;role.Level, &amp;role.Stamina, &amp;role.Exp, &amp;role.Gold)
+	if roleErr != nil &amp;&amp; !errors.Is(roleErr, sql.ErrNoRows) {
+		logger.Println(&#34;查询角色失败:&#34;, roleErr)
+		return &amp;api.LoginResp{Code: codeServerError, Msg: &#34;服务器繁忙&#34;}
+	}
+
+	logger.Printf(&#34;登录成功：account=%s uid=%d&#34;, req.Account, uid)
+	return &amp;api.LoginResp{
+		Code:      codeOK,
+		Msg:       &#34;ok&#34;,
+		Uid:       int64(uid),
+		Token:     token,
+		SessionId: token,
+		Level:     role.Level,
+		Stamina:   role.Stamina,
+		Exp:       role.Exp,
+		Gold:      role.Gold,
+	}
+    在注册方面我使用了在前一篇文章中用过的“事务”方法，让账号与角色在同一事务中创建，避免只有账号，没有角色的情况出现。万一出现，事务就会退出回滚数据。">
+<meta name="author" content="">
+<link rel="canonical" href="http://localhost:1313/posts/2026/11/%E7%99%BB%E9%99%86%E4%B8%8E%E6%88%98%E6%96%97%E7%9A%84%E8%A1%94%E6%8E%A5/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.2fd9135862a3da866393a267370bb97cd812193a02eb63558b88b00f30ec3648.css" integrity="sha256-L9kTWGKj2oZjk6JnNwu5fNgSGToC62NVi4iwDzDsNkg=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/posts/2026/11/%E7%99%BB%E9%99%86%E4%B8%8E%E6%88%98%E6%96%97%E7%9A%84%E8%A1%94%E6%8E%A5/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" accesskey="h" title="Strandingwhale | Tech Blog (Alt + H)">Strandingwhale | Tech Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="http://localhost:1313/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      登陆与战斗的衔接
+    </h1>
+    <div class="post-meta">
+
+<span title='2026-11-03T22:10:00+08:00'>November 3, 2026</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="前言">前言<a hidden class="anchor" aria-hidden="true" href="#前言">#</a></h1>
+<p>    这次更新应该是做客户端前的倒数第三次服务端更新了。本次更新的量比较少，主要是因为期中的任务有点多。好了让我们开始把。</p>
+<h1 id="战斗链接">战斗链接<a hidden class="anchor" aria-hidden="true" href="#战斗链接">#</a></h1>
+<p>    我在战斗服务中加入了检测Uid的段落，以便后面进房扣除体力。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Uid</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">EnterRoomResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeBadParam</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;uid 不能为 0，请先登录&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    进房扣 1 点体力；体力不足或玩家不存在时禁止进房</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">code</span>, <span style="color:#a6e22e">msg</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">deductStamina</span>(<span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Uid</span>); <span style="color:#a6e22e">code</span> <span style="color:#f92672">!=</span> <span style="color:#a6e22e">codeOK</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;玩家 uid=%d 进房失败：扣体力 code=%d msg=%s&#34;</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Uid</span>, <span style="color:#a6e22e">code</span>, <span style="color:#a6e22e">msg</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">EnterRoomResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">code</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#a6e22e">msg</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><h1 id="账号链接">账号链接<a hidden class="anchor" aria-hidden="true" href="#账号链接">#</a></h1>
+<p>    我在登陆账号时增加了检查角色是否缺失的函数，如果存在则扫描角色信息</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span>	<span style="color:#75715e">// 角色信息：注册时已建 player 行；老账号缺失时按零值返回，不阻断登录</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">role</span> <span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">LoginResp</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">roleErr</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">db</span>.<span style="color:#a6e22e">QueryRow</span>(
+</span></span><span style="display:flex;"><span>		<span style="color:#e6db74">&#34;SELECT level, stamina, exp, gold FROM player WHERE uid = ?&#34;</span>, <span style="color:#a6e22e">uid</span>,
+</span></span><span style="display:flex;"><span>	).<span style="color:#a6e22e">Scan</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">role</span>.<span style="color:#a6e22e">Level</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">role</span>.<span style="color:#a6e22e">Stamina</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">role</span>.<span style="color:#a6e22e">Exp</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">role</span>.<span style="color:#a6e22e">Gold</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">roleErr</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> <span style="color:#f92672">&amp;&amp;</span> !<span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">Is</span>(<span style="color:#a6e22e">roleErr</span>, <span style="color:#a6e22e">sql</span>.<span style="color:#a6e22e">ErrNoRows</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;查询角色失败:&#34;</span>, <span style="color:#a6e22e">roleErr</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">LoginResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;登录成功：account=%s uid=%d&#34;</span>, <span style="color:#a6e22e">req</span>.<span style="color:#a6e22e">Account</span>, <span style="color:#a6e22e">uid</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">LoginResp</span>{
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Code</span>:      <span style="color:#a6e22e">codeOK</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Msg</span>:       <span style="color:#e6db74">&#34;ok&#34;</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Uid</span>:       int64(<span style="color:#a6e22e">uid</span>),
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Token</span>:     <span style="color:#a6e22e">token</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">SessionId</span>: <span style="color:#a6e22e">token</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Level</span>:     <span style="color:#a6e22e">role</span>.<span style="color:#a6e22e">Level</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Stamina</span>:   <span style="color:#a6e22e">role</span>.<span style="color:#a6e22e">Stamina</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Exp</span>:       <span style="color:#a6e22e">role</span>.<span style="color:#a6e22e">Exp</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">Gold</span>:      <span style="color:#a6e22e">role</span>.<span style="color:#a6e22e">Gold</span>,
+</span></span><span style="display:flex;"><span>	}
+</span></span></code></pre></div><p>    在注册方面我使用了在前一篇文章中用过的“事务”方法，让账号与角色在同一事务中创建，避免只有账号，没有角色的情况出现。万一出现，事务就会退出回滚数据。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-Go" data-lang="Go"><span style="display:flex;"><span>	<span style="color:#75715e">// 账号与角色行必须在同一事务里创建，避免只有账号没有角色</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">tx</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">db</span>.<span style="color:#a6e22e">Begin</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">logger</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;开启事务失败:&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">api</span>.<span style="color:#a6e22e">RegisterResp</span>{<span style="color:#a6e22e">Code</span>: <span style="color:#a6e22e">codeServerError</span>, <span style="color:#a6e22e">Msg</span>: <span style="color:#e6db74">&#34;服务器繁忙&#34;</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">defer</span> <span style="color:#a6e22e">tx</span>.<span style="color:#a6e22e">Rollback</span>()
+</span></span></code></pre></div><p>    很简单把，因为服务端的初步更新快到结尾了，所以我要放松一些。下期见。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="http://localhost:1313/tags/go/">Go</a></li>
+      <li><a href="http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/">游戏开发</a></li>
+      <li><a href="http://localhost:1313/tags/%E6%B8%B8%E6%88%8F%E9%A1%B9%E7%9B%AE/">游戏项目</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="http://localhost:1313/">Strandingwhale | Tech Blog</a></span> · 
+
+    
+    
+    <span>
+        Powered by
+        <a href="https://gohugo.io/?utm_source=papermod" rel="noopener" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

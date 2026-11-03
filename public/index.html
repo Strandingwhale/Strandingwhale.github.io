@@ -119,6 +119,25 @@
 
 <article class="first-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">登陆与战斗的衔接
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 这次更新应该是做客户端前的倒数第三次服务端更新了。本次更新的量比较少，主要是因为期中的任务有点多。好了让我们开始把。
+战斗链接 我在战斗服务中加入了检测Uid的段落，以便后面进房扣除体力。
+if req.Uid == 0 { return &amp;api.EnterRoomResp{Code: codeBadParam, Msg: &#34;uid 不能为 0，请先登录&#34;} } 进房扣 1 点体力；体力不足或玩家不存在时禁止进房
+if code, msg := deductStamina(req.Uid); code != codeOK { logger.Printf(&#34;玩家 uid=%d 进房失败：扣体力 code=%d msg=%s&#34;, req.Uid, code, msg) return &amp;api.EnterRoomResp{Code: code, Msg: msg} } 账号链接 我在登陆账号时增加了检查角色是否缺失的函数，如果存在则扫描角色信息
+// 角色信息：注册时已建 player 行；老账号缺失时按零值返回，不阻断登录 var role api.LoginResp roleErr := db.QueryRow( &#34;SELECT level, stamina, exp, gold FROM player WHERE uid = ?&#34;, uid, ).Scan(&amp;role.Level, &amp;role.Stamina, &amp;role.Exp, &amp;role.Gold) if roleErr != nil &amp;&amp; !errors.Is(roleErr, sql.ErrNoRows) { logger.Println(&#34;查询角色失败:&#34;, roleErr) return &amp;api.LoginResp{Code: codeServerError, Msg: &#34;服务器繁忙&#34;} } logger.Printf(&#34;登录成功：account=%s uid=%d&#34;, req.Account, uid) return &amp;api.LoginResp{ Code: codeOK, Msg: &#34;ok&#34;, Uid: int64(uid), Token: token, SessionId: token, Level: role.Level, Stamina: role.Stamina, Exp: role.Exp, Gold: role.Gold, } 在注册方面我使用了在前一篇文章中用过的“事务”方法，让账号与角色在同一事务中创建，避免只有账号，没有角色的情况出现。万一出现，事务就会退出回滚数据。
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-11-03T22:10:00+08:00'>November 3, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 登陆与战斗的衔接" href="http://localhost:1313/posts/2026/11/%E7%99%BB%E9%99%86%E4%B8%8E%E6%88%98%E6%96%97%E7%9A%84%E8%A1%94%E6%8E%A5/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">账号数据库更新
     </h2>
   </header>
@@ -287,23 +306,6 @@ n, err := conn.Read(readBuf) if p.MessageID == 1001 { body := string(p.Payload) 
 
 <span title='2026-10-22T20:20:00+08:00'>October 22, 2026</span></footer>
   <a class="entry-link" aria-label="post link to 检测与网关" href="http://localhost:1313/posts/2026/10/%E6%A3%80%E6%B5%8B%E4%B8%8E%E7%BD%91%E5%85%B3/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2 class="entry-hint-parent">第一个新文件“packet”
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>前言 晚上好pithub pages 和博客园的读者们，我开始建造我的游戏，暂且叫他无底深城吧。首先是构建后端，我打算用go语言来做。我之前学过一点，但不多，也算从头再来。
-第一个文件 “packet.go”是将消息 ID &#43; protobuf 二进制 → 组装成 [4字节长度][2字节msgId][payload] 的包（大端）并从字节缓冲区里不断读，切出完整包，处理半包、粘包的功能文件
-这些花了我几个小时， 总之收获还蛮多的。而且这和网上的课程相去甚远，像C&#43;&#43;里的STL，别人不教，就算你精通了基础，也还是不一样。好了先到这，我睡了。
-</p>
-  </div>
-  <footer class="entry-footer">
-
-<span title='2026-10-22T13:30:00+08:00'>October 22, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 第一个新文件“packet”" href="http://localhost:1313/posts/2026/10/%E7%AC%AC%E4%B8%80%E4%B8%AA%E6%96%B0%E6%96%87%E4%BB%B6packet/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">
