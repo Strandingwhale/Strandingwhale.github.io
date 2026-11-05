@@ -118,6 +118,25 @@
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">断连与限流
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 本次更新是限制基础限流（防刷屏）和断线通知后端。给 Session 加一个每连接消息频率计数（滑动窗口或简单令牌桶）：比如 “每 5 秒最多 N 条消息”，超出则直接丢弃 / 拒绝，并打日志。心跳（msgId 0）、登录（1000-1999）不要被限流误杀 —— 限流主要针对战斗高频指令（2000&#43;）。目的是防客户端刷指令打垮后端，这是需求 “防止短时间大量请求打垮服务” 的落地。
+玩家断开时（handleConn 的 defer 里），网关目前只清 clientMap—— 加一步：若该会话已在房间，给 battle 发一条 “断线通知”（新增内部消息号，如 2010）。battle 收到后标记该房间 “玩家已断线，等待重连”（配合你已有的快照重连机制：断开后房间继续跑，超时未重连再销毁，防止僵尸房间占用）
+断连 先在网关的defer里加入断连返回。
+defer func() { // 断开时先取出会话状态：已进房且已登录才通知 battle 进入等待重连 roomID := session.RoomID() uid := session.UID() ... if roomID != 0 &amp;&amp; uid != 0 { notifyBattleOffline(uid, roomID) } }() notifyBattleOffline 客户端断开时通知 battle：该玩家的房间进入等待重连状态
+func notifyBattleOffline(uid uint64, roomID uint32) { body, err := json.Marshal(struct { UID uint64 `json:&#34;uid&#34;` RoomID uint32 `json:&#34;room_id&#34;` }{UID: uid, RoomID: roomID}) if err != nil { logger.Println(&#34;序列化断线通知失败:&#34;, err) return } pkt, err := common.Encode(2010, 0, body) if err != nil { logger.Println(&#34;编码断线通知失败:&#34;, err) return } if !battleBackend.send(pkt) { logger.Printf(&#34;battle 未连接，uid=%d 断线通知丢弃&#34;, uid) return } logger.Printf(&#34;玩家 uid=%d 断开，通知 battle roomId=%d 等待重连&#34;, uid, roomID) } 再传到bettle服务中网关内部通知：玩家断线，房间进入等待重连状态（无需回包）
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-11-05T13:10:00+08:00'>November 5, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 断连与限流" href="http://localhost:1313/posts/2026/11/%E6%96%AD%E8%BF%9E%E4%B8%8E%E9%99%90%E6%B5%81/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">登陆与战斗的衔接
     </h2>
   </header>
@@ -289,22 +308,6 @@ n, err := conn.Read(readBuf) if p.MessageID == 1001 { body := string(p.Payload) 
 
 <span title='2026-10-23T12:30:00+08:00'>October 23, 2026</span></footer>
   <a class="entry-link" aria-label="post link to 基础登陆与心跳检测" href="http://localhost:1313/posts/2026/10/%E5%9F%BA%E7%A1%80%E7%99%BB%E9%99%86%E4%B8%8E%E5%BF%83%E8%B7%B3%E6%A3%80%E6%B5%8B/"></a>
-</article>
-
-<article class="post-entry tag-entry"> 
-  <header class="entry-header">
-    <h2 class="entry-hint-parent">检测与网关
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>前言 晚上好，今天我优化了我的Decode函数，并写了一个测试文件检测我的packet。对于本次更新文件，我大概用了一个小时就写好了，快了很多。还有关于这个游戏，我想要直接自研一个引擎，不过这要等到我先用unity或unreal把游戏原型做出来在说把。如果不出意外的话，后面几年我都要把空闲时间花在这了（除了考研复习时间）。
-正文 这是优化代码， 减少了header变量，而改用直接写入[:4]。而且少用了检测，可以减少一点负担。 至于检测就容易多了 大概几个检测都是这个格式，比较简单就不多说了。 然后就是网关。 也都是简单的语法，就是查”net“的函数怎么使用花了点时间。明天继续。
-</p>
-  </div>
-  <footer class="entry-footer">
-
-<span title='2026-10-22T20:20:00+08:00'>October 22, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 检测与网关" href="http://localhost:1313/posts/2026/10/%E6%A3%80%E6%B5%8B%E4%B8%8E%E7%BD%91%E5%85%B3/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">
