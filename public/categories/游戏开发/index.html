@@ -118,6 +118,28 @@
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">完结篇：把服务端接上客户端
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>前言 10 月 21 日新建这个仓库的时候，我给它的定位是“面向后端岗位的分布式塔防作品集”。说白了，就是想拿它去面试。服务端拆四个进程，TCP、protobuf、MySQL、Redis，该有的都有，唯一没有的是“能玩”。
+十七天后，提交记录停在 20 次。Go 写了 3989 行，不算 protoc 生成的代码；C# 写了 1121 行，同样不算生成的 Base.cs 和 Config.cs。今天客户端打包出了 exe，点进去能注册、登录、选关、部署、放技能、看结算，这一版早期技术测试就算完结了。
+完结不等于做完。没做的部分我放在后面单独讲，先把最后这两天的事记下来。
+客户端之前，先确认 C# 能编过 我用的是团结引擎 1.11.0，版本号 2022.3.62t17，2D 模板。机器上装的就是它，画个塔防够用。问题是我没写过 C#，也没正儿八经用过 Unity。
+所以第一件事不是画界面，是验证“这段 C# 到底能不能过编译”。等编辑器重编译太慢，我搭了个 dotnet classlib，netstandard2.1，LangVersion 9，把团结引擎 Editor\Data\Managed 下的 UnityEngine dll 和 Google.Protobuf.dll 引进来，命令行直接 build。报错秒出，改完再 build，一分钟能迭代十几轮。这招省下来的等待时间，大概比写代码的时间还多。
+第一个坑是 protobuf 的依赖链。ToByteArray() 报 CS1061，因为我只 using Api;，忘了 using Google.Protobuf;。补上之后又报程序集加载失败：Google.Protobuf 3.28.3 依赖 System.Memory，System.Memory 又依赖 System.Buffers、System.Numerics.Vectors、System.Runtime.CompilerServices.Unsafe。四个 dll 少一个都不行，全塞进 Assets/Plugins/ 才安静。
+这种错误没有技术含量，但很消耗人。你以为是代码写错了，其实是工程里少了一个文件。
+网络层：14 个字节的帧头又踩一遍 服务端的帧是 [4B BodyLen][2B msgId][8B connID][payload]，大端。客户端这边 connID 填 0，网关转发时会覆盖成它分配的连接号，回包靠这个号找到是哪条连接。
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-11-07T13:10:00+08:00'>November 7, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 完结篇：把服务端接上客户端" href="http://localhost:1313/posts/2026/11/%E5%AE%8C%E7%BB%93%E7%AF%87/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">配置表解析
     </h2>
   </header>
@@ -288,24 +310,6 @@ syntax = &#34;proto3&#34;; package api; option go_package=&#34;./;api&#34;; //�
 
 <span title='2026-10-25T02:00:00+08:00'>October 25, 2026</span></footer>
   <a class="entry-link" aria-label="post link to 重大更新：数据库与protobuf" href="http://localhost:1313/posts/2026/10/%E9%87%8D%E5%A4%A7%E6%9B%B4%E6%96%B0%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%8Eprotobuf/"></a>
-</article>
-
-<article class="post-entry tag-entry"> 
-  <header class="entry-header">
-    <h2 class="entry-hint-parent">会话更新
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>前言 会话的初步构建已经完成了，由于加入了新的packet变量：connid，所以很多函数的内容都要小改，但要小改的地方太多了忘记什么函数的哪里需要改动，以至于编译的时候经常报错。下一步就是配置docker.yml建立MySQL和redis数据库，然后base.proto 该把 LoginReq/LoginResp/RegisterReq 等真正定义出来并生成 Go 代码，packet.Payload 从字符串换成 protobuf。下一周再说把，现在夏秋换季，我发了点小烧，可能想不了太多东西。
-会话 将session（会话结构体）定义为
-type Session struct { conn net.Conn connID uint64 // 网关内自增的连接标识，login 回包靠它定位 remoteAddr string //客户端地址 readCache []byte //拆包缓存（处理粘包半包） lastRecvAt time.Time // 最后收到消息时间，用于心跳超时 sessionID string // 登录成功后分配的会话id uid uint64 // 用户id，登录成功后赋值 closeOnce sync.Once closeChan chan struct{} mu sync.Mutex } 然后就是建立会话相关的函数
-// ConnID 返回网关分配的连接标识 func (s *Session) ConnID() uint64 { return s.connID } // UpdateRecvTime 更新最后接收时间（收到任何包的时候调用，重置心跳计时） func (s *Session) UpdateRecvTime() { s.mu.Lock() defer s.mu.Unlock() s.lastRecvAt = time.Now() } // IsTimeout 判断会话是否心跳超时 func (s *Session) IsTimeout(timeout time.Duration) bool { s.mu.Lock() defer s.mu.Unlock() return time.Since(s.lastRecvAt) &gt; timeout } // WriteMsg 给客户端发协议包 func (s *Session) WriteMsg(data []byte) error { s.mu.Lock() defer s.mu.Unlock() _, err := s.conn.Write(data) return err } // Close 关闭会话 func (s *Session) Close() { s.closeOnce.Do(func() { _ = s.conn.Close() close(s.closeChan) }) } // Closed 返回关闭信号通道 func (s *Session) Closed() &lt;-chan struct{} { return s.closeChan } 这些都是很简单的函数，不过要把这些放进网关里需要费一些功夫。除了之前的心跳检测包装成函数之外，现在也可以定向发pkt给指定的用户了。
-...</p>
-  </div>
-  <footer class="entry-footer">
-
-<span title='2026-10-24T13:30:00+08:00'>October 24, 2026</span></footer>
-  <a class="entry-link" aria-label="post link to 会话更新" href="http://localhost:1313/posts/2026/10/%E4%BC%9A%E8%AF%9D%E6%9B%B4%E6%96%B0/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">

@@ -6,8 +6,25 @@
     <description>Recent content in Go on Strandingwhale | Tech Blog</description>
     <generator>Hugo</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 06 Nov 2026 13:10:00 +0800</lastBuildDate>
+    <lastBuildDate>Sat, 07 Nov 2026 13:10:00 +0800</lastBuildDate>
     <atom:link href="http://localhost:1313/tags/go/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>完结篇：把服务端接上客户端</title>
+      <link>http://localhost:1313/posts/2026/11/%E5%AE%8C%E7%BB%93%E7%AF%87/</link>
+      <pubDate>Sat, 07 Nov 2026 13:10:00 +0800</pubDate>
+      <guid>http://localhost:1313/posts/2026/11/%E5%AE%8C%E7%BB%93%E7%AF%87/</guid>
+      <description>&lt;h2 id=&#34;前言&#34;&gt;前言&lt;/h2&gt;
+&lt;p&gt;10 月 21 日新建这个仓库的时候，我给它的定位是“面向后端岗位的分布式塔防作品集”。说白了，就是想拿它去面试。服务端拆四个进程，TCP、protobuf、MySQL、Redis，该有的都有，唯一没有的是“能玩”。&lt;/p&gt;
+&lt;p&gt;十七天后，提交记录停在 20 次。Go 写了 3989 行，不算 protoc 生成的代码；C# 写了 1121 行，同样不算生成的 &lt;code&gt;Base.cs&lt;/code&gt; 和 &lt;code&gt;Config.cs&lt;/code&gt;。今天客户端打包出了 exe，点进去能注册、登录、选关、部署、放技能、看结算，这一版早期技术测试就算完结了。&lt;/p&gt;
+&lt;p&gt;完结不等于做完。没做的部分我放在后面单独讲，先把最后这两天的事记下来。&lt;/p&gt;
+&lt;h2 id=&#34;客户端之前先确认-c-能编过&#34;&gt;客户端之前，先确认 C# 能编过&lt;/h2&gt;
+&lt;p&gt;我用的是团结引擎 1.11.0，版本号 &lt;code&gt;2022.3.62t17&lt;/code&gt;，2D 模板。机器上装的就是它，画个塔防够用。问题是我没写过 C#，也没正儿八经用过 Unity。&lt;/p&gt;
+&lt;p&gt;所以第一件事不是画界面，是验证“这段 C# 到底能不能过编译”。等编辑器重编译太慢，我搭了个 dotnet classlib，&lt;code&gt;netstandard2.1&lt;/code&gt;，&lt;code&gt;LangVersion 9&lt;/code&gt;，把团结引擎 &lt;code&gt;Editor\Data\Managed&lt;/code&gt; 下的 UnityEngine dll 和 &lt;code&gt;Google.Protobuf.dll&lt;/code&gt; 引进来，命令行直接 build。报错秒出，改完再 build，一分钟能迭代十几轮。这招省下来的等待时间，大概比写代码的时间还多。&lt;/p&gt;
+&lt;p&gt;第一个坑是 protobuf 的依赖链。&lt;code&gt;ToByteArray()&lt;/code&gt; 报 CS1061，因为我只 &lt;code&gt;using Api;&lt;/code&gt;，忘了 &lt;code&gt;using Google.Protobuf;&lt;/code&gt;。补上之后又报程序集加载失败：Google.Protobuf 3.28.3 依赖 System.Memory，System.Memory 又依赖 System.Buffers、System.Numerics.Vectors、System.Runtime.CompilerServices.Unsafe。四个 dll 少一个都不行，全塞进 &lt;code&gt;Assets/Plugins/&lt;/code&gt; 才安静。&lt;/p&gt;
+&lt;p&gt;这种错误没有技术含量，但很消耗人。你以为是代码写错了，其实是工程里少了一个文件。&lt;/p&gt;
+&lt;h2 id=&#34;网络层14-个字节的帧头又踩一遍&#34;&gt;网络层：14 个字节的帧头又踩一遍&lt;/h2&gt;
+&lt;p&gt;服务端的帧是 &lt;code&gt;[4B BodyLen][2B msgId][8B connID][payload]&lt;/code&gt;，大端。客户端这边 connID 填 0，网关转发时会覆盖成它分配的连接号，回包靠这个号找到是哪条连接。&lt;/p&gt;</description>
+    </item>
     <item>
       <title>配置表解析</title>
       <link>http://localhost:1313/posts/2026/11/%E9%85%8D%E7%BD%AE%E8%A1%A8%E8%A7%A3%E6%9E%90/</link>
