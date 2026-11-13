@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="noindex, nofollow">
+<title>地下城引擎开发S0-1 | Strandingwhale | Tech Blog</title>
+<meta name="keywords" content="C&#43;&#43;, 引擎开发">
+<meta name="description" content="地下城引擎 · S0–S1 开发记录
+
+项目：地下城引擎（2D 瓦片地下城 / Roguelike 方向）
+记录时间：2026-11-14
+当前版本：v0.0.4
+阶段：S0 工程骨架 ✅ / S1 平台层 ✅（遗留 3 项待办）
+平台：Windows 10/11 &#43; MinGW-w64（暂不使用 MSVC）
+
+
+一、阶段目标与验收
+
+	
+			
+					阶段
+					目标
+					验收标准
+					结果
+			
+	
+	
+			
+					S0
+					空窗口能弹出来、干净退出、工程结构定型
+					1280×720 黑窗口，Esc/叉号可退出，无残留进程，全量构建 &lt; 60s
+					✅ 通过
+			
+			
+					S1-1
+					日志系统替换 SDL_Log
+					分级、带时间戳、控制台与文件同时输出
+					✅ 通过
+			
+			
+					S1-2
+					固定步长主循环
+					逻辑恒定 60 ticks/s，渲染跟随显示器，无死亡螺旋
+					✅ 通过（实测 60.0 ticks/s）
+			
+			
+					S1-3
+					输入层（快照 &#43; 动作映射）
+					四态正确、失焦不粘键、Scancode 不外泄
+					✅ 通过
+			
+			
+					S1-4
+					收口：main 只做编排
+					main 无全局状态/无资源生命周期
+					✅ 通过（115 行纯编排）
+			
+	
+
+S1 最重要的成果不是功能，而是边界：engine 提供能力，game 只做调度，engine 不反过来依赖 game。这条线守住了，后面 S5/S6 才不会塌。">
+<meta name="author" content="">
+<link rel="canonical" href="http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s0-1/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.2fd9135862a3da866393a267370bb97cd812193a02eb63558b88b00f30ec3648.css" integrity="sha256-L9kTWGKj2oZjk6JnNwu5fNgSGToC62NVi4iwDzDsNkg=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s0-1/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" accesskey="h" title="Strandingwhale | Tech Blog (Alt + H)">Strandingwhale | Tech Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="http://localhost:1313/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      地下城引擎开发S0-1
+    </h1>
+    <div class="post-meta">
+
+<span title='2026-11-13T22:10:00+08:00'>November 13, 2026</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="地下城引擎--s0s1-开发记录">地下城引擎 · S0–S1 开发记录<a hidden class="anchor" aria-hidden="true" href="#地下城引擎--s0s1-开发记录">#</a></h1>
+<blockquote>
+<p>项目：地下城引擎（2D 瓦片地下城 / Roguelike 方向）
+记录时间：2026-11-14
+当前版本：v0.0.4
+阶段：S0 工程骨架 ✅ / S1 平台层 ✅（遗留 3 项待办）
+平台：Windows 10/11 + MinGW-w64（暂不使用 MSVC）</p>
+</blockquote>
+<hr>
+<h2 id="一阶段目标与验收">一、阶段目标与验收<a hidden class="anchor" aria-hidden="true" href="#一阶段目标与验收">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>阶段</th>
+					<th>目标</th>
+					<th>验收标准</th>
+					<th>结果</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>S0</td>
+					<td>空窗口能弹出来、干净退出、工程结构定型</td>
+					<td>1280×720 黑窗口，Esc/叉号可退出，无残留进程，全量构建 &lt; 60s</td>
+					<td>✅ 通过</td>
+			</tr>
+			<tr>
+					<td>S1-1</td>
+					<td>日志系统替换 SDL_Log</td>
+					<td>分级、带时间戳、控制台与文件同时输出</td>
+					<td>✅ 通过</td>
+			</tr>
+			<tr>
+					<td>S1-2</td>
+					<td>固定步长主循环</td>
+					<td>逻辑恒定 60 ticks/s，渲染跟随显示器，无死亡螺旋</td>
+					<td>✅ 通过（实测 60.0 ticks/s）</td>
+			</tr>
+			<tr>
+					<td>S1-3</td>
+					<td>输入层（快照 + 动作映射）</td>
+					<td>四态正确、失焦不粘键、Scancode 不外泄</td>
+					<td>✅ 通过</td>
+			</tr>
+			<tr>
+					<td>S1-4</td>
+					<td>收口：main 只做编排</td>
+					<td>main 无全局状态/无资源生命周期</td>
+					<td>✅ 通过（115 行纯编排）</td>
+			</tr>
+	</tbody>
+</table>
+<p><strong>S1 最重要的成果不是功能，而是边界</strong>：<code>engine</code> 提供能力，<code>game</code> 只做调度，<code>engine</code> 不反过来依赖 <code>game</code>。这条线守住了，后面 S5/S6 才不会塌。</p>
+<hr>
+<h2 id="二技术栈与环境">二、技术栈与环境<a hidden class="anchor" aria-hidden="true" href="#二技术栈与环境">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>项</th>
+					<th>取值</th>
+					<th>备注</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>编译器</td>
+					<td>MinGW-w64 gcc/g++ 15.2.0（<code>D:\mingw64</code>）</td>
+					<td>未用 MSVC，原因见「踩坑 #4」</td>
+			</tr>
+			<tr>
+					<td>构建</td>
+					<td>CMake 4.5.0 + 生成器 <code>MinGW Makefiles</code></td>
+					<td>单配置，Debug/Release 各一个构建目录</td>
+			</tr>
+			<tr>
+					<td>构建目录</td>
+					<td><code>build-mingw/</code>、<code>build-release/</code></td>
+					<td>已在 <code>.gitignore</code> 中忽略（<code>build*/</code>）</td>
+			</tr>
+			<tr>
+					<td>窗口/输入/音频设备</td>
+					<td>SDL3 <code>release-3.4.20</code></td>
+					<td>静态链接（<code>SDL_SHARED=OFF</code>, <code>SDL_STATIC=ON</code>）</td>
+			</tr>
+			<tr>
+					<td>数学</td>
+					<td>glm <code>1.0.3</code></td>
+					<td>纯头文件</td>
+			</tr>
+			<tr>
+					<td>GUI</td>
+					<td>ImGui <code>v1.93.0-docking</code></td>
+					<td>仅 4 个核心 <code>.cpp</code> 编入 engine，后端未接入</td>
+			</tr>
+			<tr>
+					<td>图片/字体</td>
+					<td>stb（master, commit <code>4e9b368</code>）</td>
+					<td>无 tag，靠 commit 锁定</td>
+			</tr>
+			<tr>
+					<td>依赖方式</td>
+					<td>git submodule + 浅克隆（<code>--depth 1</code>）+ tag 锁定</td>
+					<td>不用 vcpkg：四个库均无传递依赖</td>
+			</tr>
+	</tbody>
+</table>
+<p>常用命令：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span>cmake --preset mingw-debug        <span style="color:#75715e"># 仅改 CMakeLists / 换工具链时</span>
+</span></span><span style="display:flex;"><span>cmake --build --preset mingw-debug
+</span></span><span style="display:flex;"><span>.\build-mingw\bin\game.exe
+</span></span></code></pre></div><hr>
+<h2 id="三目录结构当前">三、目录结构（当前）<a hidden class="anchor" aria-hidden="true" href="#三目录结构当前">#</a></h2>
+<pre tabindex="0"><code>地下城引擎/
+├─ CMakeLists.txt                顶层：C++17、/W4、输出统一到 build/bin
+├─ CMakePresets.json             mingw-debug / mingw-release
+├─ .gitmodules                   四个子模块（URL 均指官方仓库）
+├─ .vscode/                      c_cpp_properties.json + tasks.json（Trae 用）
+├─ docs/                         本记录 + gdd.md + non_goals.md + 路线图
+├─ engine/                       引擎本体（与具体游戏无关）
+│  ├─ core/                      已实现：Window / Renderer / Input / Time / Log / Paths / Assert
+│  ├─ rhi/ renderer/ asset/ ecs/ scene/ map/ audio/ ui/ debug/ script/ serialize/ tools/
+│  │                             （S1–S14 预留，目前为空目录）
+│  └─ CMakeLists.txt             静态库 engine，GLOB 自动收集 *.cpp
+├─ game/                         具体游戏
+│  ├─ src/main.cpp               只做编排
+│  ├─ assets/ data/ systems/     预留
+│  └─ CMakeLists.txt             可执行文件 game → 链接 engine
+├─ tests/                        预留，尚未接入 CMake（见待办）
+└─ third_party/                  SDL / glm / imgui / stb
+</code></pre><p><code>engine</code> 的 include 路径以 <code>engine/</code> 为根，所以 game 里的写法是 <code>#include &quot;core/Log.h&quot;</code>。</p>
+<hr>
+<h2 id="四s0工程骨架">四、S0：工程骨架<a hidden class="anchor" aria-hidden="true" href="#四s0工程骨架">#</a></h2>
+<p>做的事：</p>
+<ol>
+<li>明确目标与非目标，写在 <code>docs/gdd.md</code> / <code>docs/non_goals.md</code></li>
+<li>四个依赖以 submodule 方式引入，tag 锁定版本</li>
+<li>三层 CMake：顶层（标准/警告/输出目录）+ <code>engine</code>（静态库）+ <code>game</code>（可执行文件）</li>
+<li>建立 <code>engine/</code> 与 <code>game/</code> 的<strong>单向依赖</strong>：game → engine，反向禁止</li>
+<li>建窗口、清屏、事件循环（QUIT / ESC）、逆序销毁</li>
+<li><code>.gitignore</code>：<code>build*/</code>、<code>.vs/</code>、<code>*.aseprite</code> 等</li>
+</ol>
+<p>当时特意留的两条：</p>
+<ul>
+<li>main 里不放业务，只放调度——S1 收口时正是靠这条把 <code>main.cpp</code> 压到纯编排</li>
+<li>Renderer 用 <code>SDL_Renderer</code> 只是<strong>临时占位</strong>，S3 会整体换成自研 OpenGL 渲染器</li>
+</ul>
+<hr>
+<h2 id="五s1平台层">五、S1：平台层<a hidden class="anchor" aria-hidden="true" href="#五s1平台层">#</a></h2>
+<h3 id="s1-1-日志coreloghcpp">S1-1 日志（<code>core/Log.h/.cpp</code>）<a hidden class="anchor" aria-hidden="true" href="#s1-1-日志coreloghcpp">#</a></h3>
+<ul>
+<li>分级：<code>Trace / Debug / Info / Warn / Error / Fatal</code></li>
+<li>格式：<code>[HH:MM:SS.mmm][级别首字母][tag] 消息</code></li>
+<li>输出：控制台 + 文件（<code>logs/game.log</code>），文件句柄只开一次</li>
+<li>模块 tag 通过 <code>DG_LOG_TAG</code> 宏在源文件顶部定义，默认 <code>&quot;core&quot;</code></li>
+<li>线程安全：级别用 <code>std::atomic</code>，文件写入用 <code>std::mutex</code></li>
+<li>陷阱处理：变参走 <code>va_list + vsnprintf</code> 到 1024 字节缓冲；超长自动截断</li>
+</ul>
+<p><strong>取舍</strong>：级别过滤做成运行期判断而非编译期 <code>#ifdef</code>，因为需要能在不重编译的情况下把日志开到 Trace 查问题。代价是每行有一点判断开销，可接受。</p>
+<h3 id="s1-2-时间与主循环coretimehcpp">S1-2 时间与主循环（<code>core/Time.h/.cpp</code>）<a hidden class="anchor" aria-hidden="true" href="#s1-2-时间与主循环coretimehcpp">#</a></h3>
+<p>两个类，职责严格分开：</p>
+<ul>
+<li><code>Clock</code>：基于 <code>std::chrono::steady_clock</code>，提供 <code>NowSeconds()</code> / <code>Tick()</code></li>
+<li><code>FrameTimer</code>：固定步长 + 累加器 + 插值系数 + 帧率统计</li>
+</ul>
+<p>核心公式：</p>
+<pre tabindex="0"><code>accumulator += min(frameDt, maxFrameDt)
+while accumulator &gt;= fixedDt:  Update(fixedDt); accumulator -= fixedDt
+alpha = accumulator / fixedDt   → 交给渲染插值
+</code></pre><p>三个关键点：</p>
+<ol>
+<li><strong><code>maxFrameDt = 0.25s</code> 钳制</strong>。窗口拖动卡住 3 秒后，dt 若为 3 秒会要求一次追 180 步，越追越卡（死亡螺旋）。钳到 0.25 秒，最多追 15 步。</li>
+<li><strong><code>steady_clock</code> 而非 <code>system_clock</code></strong>。管时长必须用单调时钟，用户改系统时间不影响帧率。日志时间戳则反过来用 <code>system_clock</code>（要显示墙钟时间）。这个分工很容易混淆。</li>
+<li><strong>插值系数 alpha</strong> 先算好、暂不使用——等 S3 有可移动对象时才真正吃到。</li>
+</ol>
+<h3 id="s1-3-输入coreinputhcpp">S1-3 输入（<code>core/Input.h/.cpp</code>）<a hidden class="anchor" aria-hidden="true" href="#s1-3-输入coreinputhcpp">#</a></h3>
+<p>两层结构：</p>
+<ul>
+<li><strong>设备层</strong>：<code>BeginFrame()</code> 复制 <code>SDL_GetKeyboardState</code> 到 <code>current_</code>；<code>EndFrame()</code> 转存到 <code>previous_</code></li>
+<li><strong>动作层</strong>：<code>IsActionPressed/Held/Released(&quot;MoveUp&quot;)</code>，动作表硬编码 8 个动作，底层是 <code>SDL_Scancode → 动作</code> 的映射</li>
+</ul>
+<p>四态定义：<code>Up / Held / Pressed / Released</code>，后两个是边沿，只在本帧有效。</p>
+<p>已经处理掉的四个坑：</p>
+<table>
+	<thead>
+			<tr>
+					<th>坑</th>
+					<th>处理</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><code>SDL_GetKeyboardState</code> 返回“活”指针</td>
+					<td>每帧复制快照，不直接读原指针</td>
+			</tr>
+			<tr>
+					<td>丢焦点后收不到 keyup → 粘键</td>
+					<td><code>SDL_EVENT_WINDOW_FOCUS_LOST</code> 时 <code>SDL_ResetKeyboard()</code> 并清空快照</td>
+			</tr>
+			<tr>
+					<td>滚轮不是状态而是事件</td>
+					<td>事件池里累加 <code>wheel_</code>，帧末清零</td>
+			</tr>
+			<tr>
+					<td>鼠标相对位移读一次就清零</td>
+					<td>一帧只调一次 <code>SDL_GetRelativeMouseState</code></td>
+			</tr>
+	</tbody>
+</table>
+<p><strong>设计约束</strong>：<code>SDL_Scancode</code> 不许出现在 <code>game/</code> 里。将来接手柄、接脚本、做键位重映射，只需动 <code>Input.cpp</code> 里那张表。</p>
+<p>修过的一个真 bug：<code>IsActionHeld</code> 一开始只判断 <code>Held</code>，漏掉 <code>Pressed</code>，导致按下的第一帧读不到输入（60Hz 下白丢 16ms，手感“不跟手”）。而鼠标那边用位掩码天然包含首帧，键鼠语义不一致，更难查。</p>
+<h3 id="s1-4-收口">S1-4 收口<a hidden class="anchor" aria-hidden="true" href="#s1-4-收口">#</a></h3>
+<ul>
+<li><code>core/Window.*</code>：封装 <code>SDL_Window</code>，game 不再持全局句柄</li>
+<li><code>core/Renderer.*</code>：封装 <code>SDL_Renderer</code>，负责清屏与提交（临时实现）</li>
+<li><code>core/Paths.*</code>：<code>res://</code> → exe 所在目录（<code>SDL_GetBasePath</code>），日志与资源路径不再依赖当前工作目录</li>
+<li><code>core/Assert.h</code>：<code>DG_ASSERT</code>，Debug 打印文件行号后 <code>abort()</code>，Release（<code>NDEBUG</code>）编译成空语句</li>
+<li><code>main.cpp</code> 收缩为编排：<code>Init → 循环（PumpEvents → Update → Render → 统计）→ 关停</code></li>
+</ul>
+<hr>
+<h2 id="六关键设计决策">六、关键设计决策<a hidden class="anchor" aria-hidden="true" href="#六关键设计决策">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>决策</th>
+					<th>理由</th>
+					<th>代价</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>固定步长 60Hz 逻辑</td>
+					<td>确定性：寻路/AI/物理结果可复现，存档与回放才成立</td>
+					<td>渲染需要 alpha 插值</td>
+			</tr>
+			<tr>
+					<td>输入四态 + 快照</td>
+					<td>边沿触发是跳跃/射击/菜单的前提；快照保证一帧内状态一致</td>
+					<td>每帧 256 字节拷贝（可忽略）</td>
+			</tr>
+			<tr>
+					<td>动作层隔离 Scancode</td>
+					<td>键位重映射、手柄、脚本只改一层</td>
+					<td>多一层间接</td>
+			</tr>
+			<tr>
+					<td>动作表硬编码，暂不引 JSON</td>
+					<td>避免为一个键位表引入 JSON 依赖（<code>third_party</code> 里没有）</td>
+					<td>改键位要重编译，S4 统一重构</td>
+			</tr>
+			<tr>
+					<td>日志运行期过滤</td>
+					<td>线上排查需要临时开 Trace</td>
+					<td>每行一次比较</td>
+			</tr>
+			<tr>
+					<td>SDL 静态链接</td>
+					<td>发布免带 dll</td>
+					<td>首次编译慢（271 个 obj）、exe 15.6MB</td>
+			</tr>
+			<tr>
+					<td>依赖用 submodule 浅克隆</td>
+					<td>版本进仓库、可读源码、拉取量小</td>
+					<td>看不到库历史，需要时 <code>fetch --unshallow</code></td>
+			</tr>
+	</tbody>
+</table>
+<hr>
+<h2 id="七踩坑记录">七、踩坑记录<a hidden class="anchor" aria-hidden="true" href="#七踩坑记录">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>#</th>
+					<th>现象</th>
+					<th>原因</th>
+					<th>解法</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>1</td>
+					<td><code>git submodule add -b release-3.4.20</code> 报 <code>not a commit and branch cannot be created</code></td>
+					<td><code>-b</code> 只接受分支名，tag 不是分支；还要找 <code>origin/&lt;tag&gt;</code> 这个分支引用</td>
+					<td>先 add 再 <code>fetch --depth 1 origin tag X</code> + <code>checkout --detach X</code></td>
+			</tr>
+			<tr>
+					<td>2</td>
+					<td>手写 <code>.gitmodules</code> 后 <code>git submodule update --init</code> 静默无输出、不下载</td>
+					<td><code>update</code> 只遍历索引里 mode <code>160000</code> 的 gitlink；<code>.gitmodules</code> 只是配置文件</td>
+					<td>必须用 <code>git submodule add</code> 同时写两处登记</td>
+			</tr>
+			<tr>
+					<td>3</td>
+					<td>克隆 SDL 反复 <code>early EOF</code> / <code>invalid index-pack output</code></td>
+					<td>16MB 包在 GitHub 出口断流</td>
+					<td>换镜像 <code>gitcode.com/gh_mirrors/sd/SDL</code>，校验 tag commit 一致后把 remote 改回官方</td>
+			</tr>
+			<tr>
+					<td>4</td>
+					<td>CMake 报 <code>No CMAKE_C_COMPILER could be found</code>（VS 生成器）</td>
+					<td>装了 VS 但 <strong>Windows SDK 缺失</strong>（<code>Windows Kits\10</code> 下只有 UnionMetadata，无 Include/Lib）</td>
+					<td>改用 <code>D:\mingw64</code> 的 MinGW 工具链</td>
+			</tr>
+			<tr>
+					<td>5</td>
+					<td>日志位置随启动方式漂移（双击在 exe 旁、命令行在项目根）</td>
+					<td><code>InitLog(&quot;game.log&quot;)</code> 是相对当前工作目录</td>
+					<td>统一走 <code>Paths::Resolve(&quot;res://logs/...&quot;)</code></td>
+			</tr>
+			<tr>
+					<td>6</td>
+					<td>按下的第一帧无输入响应</td>
+					<td><code>IsActionHeld</code> 漏判 <code>Pressed</code></td>
+					<td>`Held</td>
+			</tr>
+			<tr>
+					<td>7</td>
+					<td>CMake 选项 <code>SDL_TEST</code> 无效</td>
+					<td>SDL3 的真实选项名是 <code>SDL_TEST_LIBRARY</code></td>
+					<td>读 SDL 的 <code>CMakeLists.txt</code> 核对后改掉</td>
+			</tr>
+			<tr>
+					<td>8</td>
+					<td><code>fps=240</code> 疑似 vsync 失效</td>
+					<td>显示器本身就是 240Hz（2560×1600）</td>
+					<td>确认后把验收口径改为「逻辑 60 ticks/s + 渲染跟随刷新率」</td>
+			</tr>
+	</tbody>
+</table>
+<p>其中 #2 和 #4 是最值得记的两条：前者说明“配置存在 ≠ 已生效”，后者说明“工具装了 ≠ 能用”——都要靠真实跑一遍才能暴露。</p>
+<hr>
+<h2 id="八实测数据">八、实测数据<a hidden class="anchor" aria-hidden="true" href="#八实测数据">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>指标</th>
+					<th>数值</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>逻辑步长</td>
+					<td>恒定 60.0 ticks/s（日志 <code>ticks=60/120/180</code> 稳定递增）</td>
+			</tr>
+			<tr>
+					<td>渲染帧率</td>
+					<td>240 fps（vsync 跟随 240Hz 显示器）</td>
+			</tr>
+			<tr>
+					<td>帧耗时</td>
+					<td>4.17 ms（对应 240Hz 一帧）</td>
+			</tr>
+			<tr>
+					<td>exe 体积</td>
+					<td>15.6 MB（Debug + SDL 静态库）</td>
+			</tr>
+			<tr>
+					<td>构建目录</td>
+					<td>150.6 MB / 641 文件（其中 SDL 的 obj 271 个）</td>
+			</tr>
+	</tbody>
+</table>
+<hr>
+<h2 id="九遗留问题按优先级">九、遗留问题（按优先级）<a hidden class="anchor" aria-hidden="true" href="#九遗留问题按优先级">#</a></h2>
+<ol>
+<li><strong>SDL 生命周期归属错误</strong>：<code>Window::Create</code> 里 <code>SDL_Init</code>、<code>Window::Destroy</code> 里 <code>SDL_Quit</code>。<code>SDL_Quit</code> 会关掉所有子系统，等 S8 上音频后，重建窗口会静默带走音频与手柄。应移到 <code>engine_init.cpp</code> 的 <code>EngineInit/EngineShutdown</code>，Window 只负责窗口本身。</li>
+<li><strong><code>Paths::BaseDir</code> 泄漏</strong>：<code>SDL_GetBasePath()</code> 返回值需 <code>SDL_free</code>，当前直接丢指针（一次性、量级极小，但约定要记住）。</li>
+<li><strong><code>EnsureDir</code> 不递归</strong>：只能建一层，S4 做多级资源目录时要补。</li>
+<li><code>tests/</code> 目录尚未接入 CMake（无 <code>enable_testing()</code>），等第一个纯逻辑模块（A* / 视野）出现时再接 Catch2/doctest。</li>
+<li><code>engine/CMakeLists.txt</code> 用 <code>GLOB_RECURSE</code> 收集整个 <code>engine/</code>，将来 <code>engine/tools/</code> 独立成 exe 时必须改成显式列表或分目录 target。</li>
+</ol>
+<hr>
+<h2 id="十下一步">十、下一步<a hidden class="anchor" aria-hidden="true" href="#十下一步">#</a></h2>
+<p><strong>S2 精简版</strong>：只做 <code>engine/math/Types.h</code>——浮点 <code>Vec2</code> 与整数 <code>Vec2i</code> 分开，把“格子坐标”和“像素坐标”在类型层面隔开，避免传错时零警告。Arena/Pool 分配器与 <code>Handle/SlotMap</code> 推迟（前者没有热点、后者等 S5 的真实需求）。</p>
+<p><strong>S3 起步</strong>：换 OpenGL 3.3 core 上下文，只做清屏。难点是 GL 函数加载（当前无 glad），倾向用 <code>SDL_GL_GetProcAddress</code> 自写极简 loader，顺带建立 RHI 抽象的概念。验收看 <code>glGetString(GL_RENDERER)</code> 是不是真的 NVIDIA RTX 4060，而不是 <code>GDI Generic</code>。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="http://localhost:1313/tags/c&#43;&#43;/">C&#43;&#43;</a></li>
+      <li><a href="http://localhost:1313/tags/%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91/">引擎开发</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="http://localhost:1313/">Strandingwhale | Tech Blog</a></span> · 
+
+    
+    
+    <span>
+        Powered by
+        <a href="https://gohugo.io/?utm_source=papermod" rel="noopener" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

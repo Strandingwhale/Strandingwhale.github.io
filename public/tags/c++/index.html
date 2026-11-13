@@ -115,6 +115,22 @@
     C&#43;&#43;
   </h1>
 </header>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">地下城引擎开发S0-1
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>地下城引擎 · S0–S1 开发记录 项目：地下城引擎（2D 瓦片地下城 / Roguelike 方向） 记录时间：2026-11-14 当前版本：v0.0.4 阶段：S0 工程骨架 ✅ / S1 平台层 ✅（遗留 3 项待办） 平台：Windows 10/11 &#43; MinGW-w64（暂不使用 MSVC）
+一、阶段目标与验收 阶段 目标 验收标准 结果 S0 空窗口能弹出来、干净退出、工程结构定型 1280×720 黑窗口，Esc/叉号可退出，无残留进程，全量构建 &lt; 60s ✅ 通过 S1-1 日志系统替换 SDL_Log 分级、带时间戳、控制台与文件同时输出 ✅ 通过 S1-2 固定步长主循环 逻辑恒定 60 ticks/s，渲染跟随显示器，无死亡螺旋 ✅ 通过（实测 60.0 ticks/s） S1-3 输入层（快照 &#43; 动作映射） 四态正确、失焦不粘键、Scancode 不外泄 ✅ 通过 S1-4 收口：main 只做编排 main 无全局状态/无资源生命周期 ✅ 通过（115 行纯编排） S1 最重要的成果不是功能，而是边界：engine 提供能力，game 只做调度，engine 不反过来依赖 game。这条线守住了，后面 S5/S6 才不会塌。
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-11-13T22:10:00+08:00'>November 13, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 地下城引擎开发S0-1" href="http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s0-1/"></a>
+</article>
     </main>
     
 <footer class="footer">

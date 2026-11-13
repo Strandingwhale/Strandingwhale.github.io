@@ -6,8 +6,67 @@
     <description>Recent content in Home on Strandingwhale | Tech Blog</description>
     <generator>Hugo</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Sat, 07 Nov 2026 13:10:00 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 13 Nov 2026 22:10:00 +0800</lastBuildDate>
     <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>地下城引擎开发S0-1</title>
+      <link>http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s0-1/</link>
+      <pubDate>Fri, 13 Nov 2026 22:10:00 +0800</pubDate>
+      <guid>http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s0-1/</guid>
+      <description>&lt;h1 id=&#34;地下城引擎--s0s1-开发记录&#34;&gt;地下城引擎 · S0–S1 开发记录&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;项目：地下城引擎（2D 瓦片地下城 / Roguelike 方向）
+记录时间：2026-11-14
+当前版本：v0.0.4
+阶段：S0 工程骨架 ✅ / S1 平台层 ✅（遗留 3 项待办）
+平台：Windows 10/11 + MinGW-w64（暂不使用 MSVC）&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;一阶段目标与验收&#34;&gt;一、阶段目标与验收&lt;/h2&gt;
+&lt;table&gt;
+	&lt;thead&gt;
+			&lt;tr&gt;
+					&lt;th&gt;阶段&lt;/th&gt;
+					&lt;th&gt;目标&lt;/th&gt;
+					&lt;th&gt;验收标准&lt;/th&gt;
+					&lt;th&gt;结果&lt;/th&gt;
+			&lt;/tr&gt;
+	&lt;/thead&gt;
+	&lt;tbody&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S0&lt;/td&gt;
+					&lt;td&gt;空窗口能弹出来、干净退出、工程结构定型&lt;/td&gt;
+					&lt;td&gt;1280×720 黑窗口，Esc/叉号可退出，无残留进程，全量构建 &amp;lt; 60s&lt;/td&gt;
+					&lt;td&gt;✅ 通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S1-1&lt;/td&gt;
+					&lt;td&gt;日志系统替换 SDL_Log&lt;/td&gt;
+					&lt;td&gt;分级、带时间戳、控制台与文件同时输出&lt;/td&gt;
+					&lt;td&gt;✅ 通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S1-2&lt;/td&gt;
+					&lt;td&gt;固定步长主循环&lt;/td&gt;
+					&lt;td&gt;逻辑恒定 60 ticks/s，渲染跟随显示器，无死亡螺旋&lt;/td&gt;
+					&lt;td&gt;✅ 通过（实测 60.0 ticks/s）&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S1-3&lt;/td&gt;
+					&lt;td&gt;输入层（快照 + 动作映射）&lt;/td&gt;
+					&lt;td&gt;四态正确、失焦不粘键、Scancode 不外泄&lt;/td&gt;
+					&lt;td&gt;✅ 通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S1-4&lt;/td&gt;
+					&lt;td&gt;收口：main 只做编排&lt;/td&gt;
+					&lt;td&gt;main 无全局状态/无资源生命周期&lt;/td&gt;
+					&lt;td&gt;✅ 通过（115 行纯编排）&lt;/td&gt;
+			&lt;/tr&gt;
+	&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;S1 最重要的成果不是功能，而是边界&lt;/strong&gt;：&lt;code&gt;engine&lt;/code&gt; 提供能力，&lt;code&gt;game&lt;/code&gt; 只做调度，&lt;code&gt;engine&lt;/code&gt; 不反过来依赖 &lt;code&gt;game&lt;/code&gt;。这条线守住了，后面 S5/S6 才不会塌。&lt;/p&gt;</description>
+    </item>
     <item>
       <title>完结篇：把服务端接上客户端</title>
       <link>http://localhost:1313/posts/2026/11/%E5%AE%8C%E7%BB%93%E7%AF%87/</link>
