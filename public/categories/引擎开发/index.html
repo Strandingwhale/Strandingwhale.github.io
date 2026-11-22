@@ -118,6 +118,23 @@
 
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">地下城引擎开发S2-3
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>地下城引擎 · S2–S3 开发记录 项目：地下城引擎（2D 瓦片地下城 / Roguelike 方向） 记录时间：2026-11-22 版本：V0.1.2 平台：Windows &#43; MinGW-w64（D:\mingw64，g&#43;&#43; 15.2.0）&#43; Trae
+S2 没什么可说的，就是几个结构体和五个小函数。S3 走了十一步，中间返工两次：一次是 GL 函数加载，一次是资源路径。两次都是我先把方案定死了再动手，撞了墙才换。这里把过程和撞墙的地方记下来。
+一、阶段与验收 阶段 目标 验收标准 结果 S2 数学类型 浮点坐标和格子坐标在类型上分开，传错有编译期阻力 通过（精简版） S3-1 OpenGL 3.3 core 上下文 拿到真实版本号与渲染器名，不是 GDI Generic 通过 S3-2 GL 函数加载 用到的函数都能调到 通过（换成 glad2） S3-3 Shader 文件化 &#43; 热重载 改 .frag 不重编译就生效；写坏语法画面不崩、日志报行号 通过 S3-4 纹理 四象限图方位对、边缘锐利、中文路径能加载 通过 S3-5 合批 1000 格 1 次绘制；9000 精灵 2 次；alpha 混合正确 通过 S3-6 正交相机 移动缩放和公式一致，能反算鼠标位置 通过 S3-7 图集 64 格 UV 正确、越界拦得住、能按名字查 通过 S3-8 瓦片地图 &#43; 视野裁剪 只提交视野内瓦片；视野出地图时绘制调用为 0 通过 S3-9 提交式绘制入口 引擎不再认识&#34;瓦片地图&#34;；分层排序；屏幕/世界两条通路 通过 S3-10 位图字体 能画出 HP: 100；转相机字不动；边缘不发灰 通过 S3-11 调试绘制 线段、矩形框、圆环，世界和屏幕两种坐标都能画 通过 S3-验收 1 万精灵 / 256 地图 / 换分辨率 见第八节 还没跑 二、环境 项 取值 备注 编译器 MinGW-w64 g&#43;&#43; 15.2.0（D:\mingw64） 不用 MSVC，Windows SDK 缺 构建 CMake 4.5.0 &#43; MinGW Makefiles --preset mingw-debug / mingw-release 窗口 / 输入 / 上下文 SDL3 release-3.4.20 静态链接 图形 API OpenGL 3.3 Core SDL_WINDOW_OPENGL &#43; SDL_GL_CreateContext GL 函数加载 glad2（gl.c &#43; include） 早期自写的 loader 已删 数学 glm 1.0.3 只出现在 .cpp 图片解码 stb_image（master 4e9b368） STB_IMAGE_IMPLEMENTATION 只在一个文件里展开 GUI ImGui v1.93.0-docking 已编进 engine，还没接 启动日志里的实际环境：
+...</p>
+  </div>
+  <footer class="entry-footer">
+
+<span title='2026-11-22T22:10:00+08:00'>November 22, 2026</span></footer>
+  <a class="entry-link" aria-label="post link to 地下城引擎开发S2-3" href="http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s2-3/"></a>
+</article>
+
+<article class="post-entry tag-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">地下城引擎开发S0-1
     </h2>
   </header>

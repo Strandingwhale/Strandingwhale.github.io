@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="noindex, nofollow">
+<title>地下城引擎开发S2-3 | Strandingwhale | Tech Blog</title>
+<meta name="keywords" content="C&#43;&#43;, 引擎开发">
+<meta name="description" content="地下城引擎 · S2–S3 开发记录
+
+项目：地下城引擎（2D 瓦片地下城 / Roguelike 方向）
+记录时间：2026-11-22
+版本：V0.1.2
+平台：Windows &#43; MinGW-w64（D:\mingw64，g&#43;&#43; 15.2.0）&#43; Trae
+
+S2 没什么可说的，就是几个结构体和五个小函数。S3 走了十一步，中间返工两次：一次是 GL 函数加载，一次是资源路径。两次都是我先把方案定死了再动手，撞了墙才换。这里把过程和撞墙的地方记下来。
+
+一、阶段与验收
+
+	
+			
+					阶段
+					目标
+					验收标准
+					结果
+			
+	
+	
+			
+					S2
+					数学类型
+					浮点坐标和格子坐标在类型上分开，传错有编译期阻力
+					通过（精简版）
+			
+			
+					S3-1
+					OpenGL 3.3 core 上下文
+					拿到真实版本号与渲染器名，不是 GDI Generic
+					通过
+			
+			
+					S3-2
+					GL 函数加载
+					用到的函数都能调到
+					通过（换成 glad2）
+			
+			
+					S3-3
+					Shader 文件化 &#43; 热重载
+					改 .frag 不重编译就生效；写坏语法画面不崩、日志报行号
+					通过
+			
+			
+					S3-4
+					纹理
+					四象限图方位对、边缘锐利、中文路径能加载
+					通过
+			
+			
+					S3-5
+					合批
+					1000 格 1 次绘制；9000 精灵 2 次；alpha 混合正确
+					通过
+			
+			
+					S3-6
+					正交相机
+					移动缩放和公式一致，能反算鼠标位置
+					通过
+			
+			
+					S3-7
+					图集
+					64 格 UV 正确、越界拦得住、能按名字查
+					通过
+			
+			
+					S3-8
+					瓦片地图 &#43; 视野裁剪
+					只提交视野内瓦片；视野出地图时绘制调用为 0
+					通过
+			
+			
+					S3-9
+					提交式绘制入口
+					引擎不再认识&quot;瓦片地图&quot;；分层排序；屏幕/世界两条通路
+					通过
+			
+			
+					S3-10
+					位图字体
+					能画出 HP: 100；转相机字不动；边缘不发灰
+					通过
+			
+			
+					S3-11
+					调试绘制
+					线段、矩形框、圆环，世界和屏幕两种坐标都能画
+					通过
+			
+			
+					S3-验收
+					1 万精灵 / 256 地图 / 换分辨率
+					见第八节
+					还没跑
+			
+	
+
+
+二、环境
+
+	
+			
+					项
+					取值
+					备注
+			
+	
+	
+			
+					编译器
+					MinGW-w64 g&#43;&#43; 15.2.0（D:\mingw64）
+					不用 MSVC，Windows SDK 缺
+			
+			
+					构建
+					CMake 4.5.0 &#43; MinGW Makefiles
+					--preset mingw-debug / mingw-release
+			
+			
+					窗口 / 输入 / 上下文
+					SDL3 release-3.4.20
+					静态链接
+			
+			
+					图形 API
+					OpenGL 3.3 Core
+					SDL_WINDOW_OPENGL &#43; SDL_GL_CreateContext
+			
+			
+					GL 函数加载
+					glad2（gl.c &#43; include）
+					早期自写的 loader 已删
+			
+			
+					数学
+					glm 1.0.3
+					只出现在 .cpp
+			
+			
+					图片解码
+					stb_image（master 4e9b368）
+					STB_IMAGE_IMPLEMENTATION 只在一个文件里展开
+			
+			
+					GUI
+					ImGui v1.93.0-docking
+					已编进 engine，还没接
+			
+	
+
+启动日志里的实际环境：">
+<meta name="author" content="">
+<link rel="canonical" href="http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s2-3/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.2fd9135862a3da866393a267370bb97cd812193a02eb63558b88b00f30ec3648.css" integrity="sha256-L9kTWGKj2oZjk6JnNwu5fNgSGToC62NVi4iwDzDsNkg=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s2-3/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" accesskey="h" title="Strandingwhale | Tech Blog (Alt + H)">Strandingwhale | Tech Blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="http://localhost:1313/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      地下城引擎开发S2-3
+    </h1>
+    <div class="post-meta">
+
+<span title='2026-11-22T22:10:00+08:00'>November 22, 2026</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="地下城引擎--s2s3-开发记录">地下城引擎 · S2–S3 开发记录<a hidden class="anchor" aria-hidden="true" href="#地下城引擎--s2s3-开发记录">#</a></h1>
+<blockquote>
+<p>项目：地下城引擎（2D 瓦片地下城 / Roguelike 方向）
+记录时间：2026-11-22
+版本：V0.1.2
+平台：Windows + MinGW-w64（<code>D:\mingw64</code>，g++ 15.2.0）+ Trae</p>
+</blockquote>
+<p>S2 没什么可说的，就是几个结构体和五个小函数。S3 走了十一步，中间返工两次：一次是 GL 函数加载，一次是资源路径。两次都是我先把方案定死了再动手，撞了墙才换。这里把过程和撞墙的地方记下来。</p>
+<hr>
+<h2 id="一阶段与验收">一、阶段与验收<a hidden class="anchor" aria-hidden="true" href="#一阶段与验收">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>阶段</th>
+					<th>目标</th>
+					<th>验收标准</th>
+					<th>结果</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>S2</td>
+					<td>数学类型</td>
+					<td>浮点坐标和格子坐标在类型上分开，传错有编译期阻力</td>
+					<td>通过（精简版）</td>
+			</tr>
+			<tr>
+					<td>S3-1</td>
+					<td>OpenGL 3.3 core 上下文</td>
+					<td>拿到真实版本号与渲染器名，不是 <code>GDI Generic</code></td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-2</td>
+					<td>GL 函数加载</td>
+					<td>用到的函数都能调到</td>
+					<td>通过（换成 glad2）</td>
+			</tr>
+			<tr>
+					<td>S3-3</td>
+					<td>Shader 文件化 + 热重载</td>
+					<td>改 <code>.frag</code> 不重编译就生效；写坏语法画面不崩、日志报行号</td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-4</td>
+					<td>纹理</td>
+					<td>四象限图方位对、边缘锐利、中文路径能加载</td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-5</td>
+					<td>合批</td>
+					<td>1000 格 1 次绘制；9000 精灵 2 次；alpha 混合正确</td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-6</td>
+					<td>正交相机</td>
+					<td>移动缩放和公式一致，能反算鼠标位置</td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-7</td>
+					<td>图集</td>
+					<td>64 格 UV 正确、越界拦得住、能按名字查</td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-8</td>
+					<td>瓦片地图 + 视野裁剪</td>
+					<td>只提交视野内瓦片；视野出地图时绘制调用为 0</td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-9</td>
+					<td>提交式绘制入口</td>
+					<td>引擎不再认识&quot;瓦片地图&quot;；分层排序；屏幕/世界两条通路</td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-10</td>
+					<td>位图字体</td>
+					<td>能画出 <code>HP: 100</code>；转相机字不动；边缘不发灰</td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-11</td>
+					<td>调试绘制</td>
+					<td>线段、矩形框、圆环，世界和屏幕两种坐标都能画</td>
+					<td>通过</td>
+			</tr>
+			<tr>
+					<td>S3-验收</td>
+					<td>1 万精灵 / 256 地图 / 换分辨率</td>
+					<td>见第八节</td>
+					<td>还没跑</td>
+			</tr>
+	</tbody>
+</table>
+<hr>
+<h2 id="二环境">二、环境<a hidden class="anchor" aria-hidden="true" href="#二环境">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>项</th>
+					<th>取值</th>
+					<th>备注</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>编译器</td>
+					<td>MinGW-w64 g++ 15.2.0（<code>D:\mingw64</code>）</td>
+					<td>不用 MSVC，Windows SDK 缺</td>
+			</tr>
+			<tr>
+					<td>构建</td>
+					<td>CMake 4.5.0 + <code>MinGW Makefiles</code></td>
+					<td><code>--preset mingw-debug</code> / <code>mingw-release</code></td>
+			</tr>
+			<tr>
+					<td>窗口 / 输入 / 上下文</td>
+					<td>SDL3 <code>release-3.4.20</code></td>
+					<td>静态链接</td>
+			</tr>
+			<tr>
+					<td>图形 API</td>
+					<td>OpenGL 3.3 Core</td>
+					<td><code>SDL_WINDOW_OPENGL</code> + <code>SDL_GL_CreateContext</code></td>
+			</tr>
+			<tr>
+					<td>GL 函数加载</td>
+					<td>glad2（<code>gl.c</code> + <code>include</code>）</td>
+					<td>早期自写的 loader 已删</td>
+			</tr>
+			<tr>
+					<td>数学</td>
+					<td>glm <code>1.0.3</code></td>
+					<td>只出现在 <code>.cpp</code></td>
+			</tr>
+			<tr>
+					<td>图片解码</td>
+					<td>stb_image（master <code>4e9b368</code>）</td>
+					<td><code>STB_IMAGE_IMPLEMENTATION</code> 只在一个文件里展开</td>
+			</tr>
+			<tr>
+					<td>GUI</td>
+					<td>ImGui <code>v1.93.0-docking</code></td>
+					<td>已编进 engine，还没接</td>
+			</tr>
+	</tbody>
+</table>
+<p>启动日志里的实际环境：</p>
+<pre tabindex="0"><code>OpenGL 3.3.0 - Build 32.0.101.7026 | Intel(R) RaptorLake-S Mobile Graphics Controller
+</code></pre><p>跑的是核显，不是 RTX 4060。双显卡机器默认由集显出画面，对引擎本身没影响，但后面那些 240fps 的数字是 UHD 的成绩。</p>
+<hr>
+<h2 id="三目录">三、目录<a hidden class="anchor" aria-hidden="true" href="#三目录">#</a></h2>
+<pre tabindex="0"><code>engine/
+├─ core/        Log / Time / Input / Window / Paths / Assert / EngineInit / Renderer
+├─ core/math/   Types
+├─ rhi/         GlDevice / Shader / Texture / GL（错误检查）
+├─ renderer/    BatchRenderer / Camera2D / Atlas / Sprite / BitmapFont / Text
+├─ map/         TileMap
+├─ debug/       DebugDraw
+├─ asset/ ecs/ scene/ audio/ ui/ serialize/ script/ tools/   （S4 以后用，现在空着）
+game/
+├─ src/main.cpp
+└─ assets/  shaders/  textures/
+</code></pre><p>分层是 S3 才划清的，谁放哪：</p>
+<table>
+	<thead>
+			<tr>
+					<th>目录</th>
+					<th>放什么</th>
+					<th>不许放</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><code>core</code></td>
+					<td>所有模块都能依赖的地基</td>
+					<td>依赖 renderer、rhi 的东西</td>
+			</tr>
+			<tr>
+					<td><code>rhi</code></td>
+					<td>用什么画：设备、着色器、纹理</td>
+					<td>画什么，业务概念</td>
+			</tr>
+			<tr>
+					<td><code>renderer</code></td>
+					<td>怎么画：合批、相机、图集、字体、调试绘制</td>
+					<td>具体游戏的贴图名和规则</td>
+			</tr>
+			<tr>
+					<td><code>map</code> <code>ecs</code> …</td>
+					<td>各自一类功能</td>
+					<td>跨模块耦合</td>
+			</tr>
+			<tr>
+					<td><code>game</code></td>
+					<td>内容和编排</td>
+					<td>被 engine 反向 include</td>
+			</tr>
+	</tbody>
+</table>
+<hr>
+<h2 id="四s2数学类型">四、S2：数学类型<a hidden class="anchor" aria-hidden="true" href="#四s2数学类型">#</a></h2>
+<p>只做了最简版。文档里 Arena、Pool、<code>Handle</code>、<code>SlotMap</code> 全部往后推——现在没有性能热点，也没有真实需求，做了也是猜。</p>
+<p><code>core/math/Types.h</code> 是纯 POD，手写，不引 glm：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Vec2</span>  { <span style="color:#66d9ef">float</span> x, y; };
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Vec2i</span> { <span style="color:#66d9ef">int</span> x, y; };
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Rect</span>  { <span style="color:#66d9ef">float</span> x, y, w, h; };
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Recti</span> { <span style="color:#66d9ef">int</span> x, y, w, h; };
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Vec2i <span style="color:#a6e22e">RoundToGrid</span>(Vec2 world, <span style="color:#66d9ef">float</span> cellSize);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">float</span> <span style="color:#a6e22e">Length</span>(Vec2 v);
+</span></span><span style="display:flex;"><span>Vec2  <span style="color:#a6e22e">Normalize</span>(Vec2 v);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">bool</span>  <span style="color:#a6e22e">RectContains</span>(<span style="color:#66d9ef">const</span> Rect<span style="color:#f92672">&amp;</span> r, Vec2 p);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">bool</span>  <span style="color:#a6e22e">RectContains</span>(<span style="color:#66d9ef">const</span> Recti<span style="color:#f92672">&amp;</span> r, Vec2i p);
+</span></span></code></pre></div><p>实现放 <code>Types.cpp</code>，glm 只在那里出现。</p>
+<p>三件事我当初是刻意这么定的：</p>
+<p><strong>头文件不 include glm。</strong> glm 在 <code>engine/CMakeLists.txt</code> 里是 PRIVATE include，不往外传。要是 <code>Types.h</code> 里写了 <code>#include &lt;glm/vec2.hpp&gt;</code>，<code>game</code> 立刻编译失败，或者你也可以给 game 也配上 glm 路径——但那等于把第三方库的路径写进了游戏层，后面换数学库要动的地方就多了。</p>
+<p><strong><code>Vec2</code> 和 <code>Vec2i</code> 不给隐式转换。</strong> 想从世界坐标拿格子，必须写 <code>RoundToGrid()</code>。多写一行，换的是&quot;把格子数当像素传进去&quot;这种 bug 在编译期就死掉。这种错误在运行时表现为瓦片偏半格，肉眼要盯很久。</p>
+<p><strong>不放 <code>dg::math</code> 子命名空间。</strong> <code>Vec2</code> 是全项目词汇表，<code>map</code>、<code>ecs</code>、<code>ui</code>、<code>serialize</code> 都要用。放子命名空间的结果是二十个文件里都在写 <code>using namespace dg::math</code>，多一层却没有隔离意义。</p>
+<p>放在 <code>core/math/</code> 而不是 <code>engine/math/</code>，也是同一个道理：<code>core</code> 是&quot;谁都能依赖的地基&quot;，<code>Vec2</code> 必须在最底层。要是它和 <code>renderer</code> 平级，<code>map</code> 依赖 <code>renderer</code> 的假依赖马上出现。</p>
+<hr>
+<h2 id="五s3渲染器">五、S3：渲染器<a hidden class="anchor" aria-hidden="true" href="#五s3渲染器">#</a></h2>
+<h3 id="51-上下文">5.1 上下文<a hidden class="anchor" aria-hidden="true" href="#51-上下文">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, <span style="color:#ae81ff">3</span>);
+</span></span><span style="display:flex;"><span>SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, <span style="color:#ae81ff">3</span>);
+</span></span><span style="display:flex;"><span>SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+</span></span><span style="display:flex;"><span>SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, <span style="color:#ae81ff">24</span>);
+</span></span></code></pre></div><p>选 core profile 是为了断退路。core 里没有 <code>glBegin/glEnd</code>，想画东西必须走 VBO 和 shader，从第一天就是&quot;能合批&quot;的形态。用 compatibility 的话很容易一路 <code>glBegin</code> 画下去，到第 100 个精灵才发现要重写。</p>
+<h3 id="52-gl-函数加载返工一次">5.2 GL 函数加载（返工一次）<a hidden class="anchor" aria-hidden="true" href="#52-gl-函数加载返工一次">#</a></h3>
+<p>第一版是自写 loader：手工补 <code>typedef</code>、补枚举、声明 <code>extern</code> 函数指针，再用 <code>SDL_GL_GetProcAddress</code> 一个个查。</p>
+<p>问题不在麻烦，在于漏。GL 的函数和枚举几千个，手写必然漏，漏了之后崩在驱动内部，栈上全是驱动地址，看不出是谁调的。</p>
+<p>第二版换 glad2，一行接进去：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>gladLoadGL(<span style="color:#66d9ef">reinterpret_cast</span><span style="color:#f92672">&lt;</span>GLADloadfunc<span style="color:#f92672">&gt;</span>(SDL_GL_GetProcAddress));
+</span></span></code></pre></div><p><code>rhi/GL.h</code> 剩下错误检查：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">CheckGLError</span>(<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span><span style="color:#f92672">*</span> file, <span style="color:#66d9ef">int</span> line);
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#define DG_GL_CHECK() CheckGLError(__FILE__, __LINE__)
+</span></span></span></code></pre></div><p>这类东西的价值全在&quot;不漏&quot;，机械正确性靠抄比靠写实在。</p>
+<h3 id="53-shader-与热重载">5.3 Shader 与热重载<a hidden class="anchor" aria-hidden="true" href="#53-shader-与热重载">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">bool</span> <span style="color:#a6e22e">LoadFromFiles</span>(vert, frag);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">PollHotReload</span>();   <span style="color:#75715e">// 每帧调，内部限频 200ms
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">Use</span>() <span style="color:#66d9ef">const</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">Id</span>() <span style="color:#66d9ef">const</span>;
+</span></span></code></pre></div><p>三个地方要注意：</p>
+<p>一是限频 200ms。<code>PollHotReload</code> 每帧都被调，但真去查文件时间戳最多每秒五次。Windows 上频繁 stat 会拖慢编辑器保存。</p>
+<p>二是顺序：先编译新的，成功才删旧的。反过来就是&quot;保存一个半成品，画面立刻黑掉&quot;。</p>
+<p>三是失败必须把 glsl 的编译日志原文打出来。写错一个 <code>}</code> 的时候日志是：</p>
+<pre tabindex="0"><code>ERROR: 0:9: &#39;}&#39; : syntax error
+[shader] 热重载失败，继续使用旧 shader
+</code></pre><p><code>0:9</code> 是行号，看一眼就知道改哪。</p>
+<h3 id="54-资源路径返工这次花了最久">5.4 资源路径（返工，这次花了最久）<a hidden class="anchor" aria-hidden="true" href="#54-资源路径返工这次花了最久">#</a></h3>
+<p>第一版用 CMake 的 <code>add_custom_command</code> 把 <code>assets/</code> 拷到 exe 旁边，程序读那份副本。</p>
+<p>结果改源码里的 shader 没反应。程序读的是副本，副本只在构建时更新，热重载等于白做。</p>
+<p>改成两条路径：</p>
+<table>
+	<thead>
+			<tr>
+					<th>函数</th>
+					<th>指向</th>
+					<th>用在哪</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><code>Paths::BaseDir()</code></td>
+					<td>exe 目录，可写</td>
+					<td>日志、存档</td>
+			</tr>
+			<tr>
+					<td><code>Paths::AssetDir()</code></td>
+					<td>只读资源根</td>
+					<td>美术、配置、shader</td>
+			</tr>
+			<tr>
+					<td><code>Paths::Resolve(&quot;res://…&quot;)</code></td>
+					<td>AssetDir</td>
+					<td>所有读资源</td>
+			</tr>
+			<tr>
+					<td><code>Paths::Exe(&quot;logs/…&quot;)</code></td>
+					<td>BaseDir</td>
+					<td>所有写文件</td>
+			</tr>
+	</tbody>
+</table>
+<p><code>AssetDir()</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">#ifdef DG_ASSET_ROOT
+</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> DG_ASSET_ROOT;          <span style="color:#75715e">// Debug：编译期注入源码目录
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#else
+</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">BaseDir</span>() <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;/assets&#34;</span>;  <span style="color:#75715e">// 发布：exe 旁边的 assets
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#endif
+</span></span></span></code></pre></div><p>CMake 里只在 Debug 注入：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cmake" data-lang="cmake"><span style="display:flex;"><span>target_compile_definitions(<span style="color:#e6db74">engine</span> <span style="color:#e6db74">PRIVATE</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">$&lt;</span>$&lt;CONFIG:Debug<span style="color:#f92672">&gt;</span><span style="color:#e6db74">:DG_ASSET_ROOT=</span><span style="color:#e6db74">&#34;${CMAKE_SOURCE_DIR}/game/assets&#34;</span><span style="color:#e6db74">&gt;</span>)<span style="color:#960050;background-color:#1e0010">
+</span></span></span></code></pre></div><p>实测两条路径都对：Debug 下 <code>assets=D:/地下城引擎/game/assets/</code>，改 frag 一秒内变色；Release 下 <code>assets=.../build-release/bin/assets/</code>，说明发布包能脱离源码目录跑。</p>
+<p>同一轮还清了三个旧账：<code>SDL_free(const_cast&lt;char*&gt;)</code> 的未定义行为、<code>EnsureDir</code> 只建一层（换 <code>create_directories</code>）、<code>Window</code> 越权管 <code>SDL_Init/Quit</code>（移进 <code>EngineInit/EngineShutdown</code>）。</p>
+<h3 id="55-纹理">5.5 纹理<a hidden class="anchor" aria-hidden="true" href="#55-纹理">#</a></h3>
+<p>读文件，统一转 RGBA8，传显存。四个坑全踩了：</p>
+<table>
+	<thead>
+			<tr>
+					<th>坑</th>
+					<th>现象</th>
+					<th>处理</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>stb 默认不翻转</td>
+					<td>图上下颠倒</td>
+					<td><code>stbi_set_flip_vertically_on_load(1)</code></td>
+			</tr>
+			<tr>
+					<td>stb 内部用 <code>fopen</code></td>
+					<td><code>D:\地下城引擎\</code> 这种中文路径直接打不开</td>
+					<td>自己用 <code>u8path</code> + ifstream 读字节，再 <code>stbi_load_from_memory</code></td>
+			</tr>
+			<tr>
+					<td>没设 <code>GL_TEXTURE_MIN_FILTER</code></td>
+					<td>整张图纯黑</td>
+					<td>默认 mipmap 过滤但没生成 mip 链，采样全是 0。设成 <code>GL_NEAREST</code></td>
+			</tr>
+			<tr>
+					<td><code>GL_UNPACK_ALIGNMENT</code> 默认 4</td>
+					<td>宽度不是 4 倍数的图错位</td>
+					<td><code>glPixelStorei(GL_UNPACK_ALIGNMENT, 1)</code></td>
+			</tr>
+	</tbody>
+</table>
+<p>另外 <code>STB_IMAGE_IMPLEMENTATION</code> 只能在一个 <code>.cpp</code> 里展开，现在只在 <code>Texture.cpp</code>。</p>
+<p>上传用 <code>GL_RGBA8</code> + <code>GL_NEAREST</code> + <code>GL_CLAMP_TO_EDGE</code>。像素风必须最近邻，不然边缘糊成一团；CLAMP 是防止 UV 贴到 0 或 1 时采到对边的像素。</p>
+<h3 id="56-合批">5.6 合批<a hidden class="anchor" aria-hidden="true" href="#56-合批">#</a></h3>
+<p>顶点格式二十字节：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Vertex</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">float</span> x, y;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">float</span> u, v;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">unsigned</span> <span style="color:#66d9ef">char</span> r, g, b, a;
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>颜色用 8 位而不是 float，是因为 8192 个四边形就是 32768 个顶点，<code>ubyte×4</code> 比 <code>float×4</code> 省 393KB，而 UI 染色、受击闪白、视野压暗这些用 8 位通道够了。</p>
+<p>索引一次性预生成，每个四边形 <code>0,1,2, 2,3,0</code>，base 每次加 4，<code>GL_STATIC_DRAW</code> 建完不动。绘制只传顶点。</p>
+<p><code>Flush()</code> 用孤儿化：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>glBufferData(GL_ARRAY_BUFFER, vboCapacity_, <span style="color:#66d9ef">nullptr</span>, GL_DYNAMIC_DRAW);  <span style="color:#75715e">// 丢掉旧内容
+</span></span></span><span style="display:flex;"><span>glBufferSubData(GL_ARRAY_BUFFER, <span style="color:#ae81ff">0</span>, bytes, vertices_.data());           <span style="color:#75715e">// 写新的
+</span></span></span></code></pre></div><p>先让驱动换一块新显存，是为了避开&quot;上一帧 GPU 还在读、这一帧 CPU 又要写&quot;的隐式同步。有同步的话帧时间会突然从 4ms 跳到 10ms，而且只在某些机器上跳。</p>
+<p>实测：</p>
+<table>
+	<thead>
+			<tr>
+					<th>场景</th>
+					<th>绘制调用</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>1000 格瓦片</td>
+					<td>1</td>
+			</tr>
+			<tr>
+					<td>8190 + 2 = 8192（正好满批）</td>
+					<td>1</td>
+			</tr>
+			<tr>
+					<td>9000 + 2 = 9002</td>
+					<td>2（8192 + 810）</td>
+			</tr>
+	</tbody>
+</table>
+<p>混合状态在创建设备时设一次：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>glEnable(GL_BLEND);
+</span></span><span style="display:flex;"><span>glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+</span></span></code></pre></div><p>这里被自己的测试图骗过一次。给半透明白条测试图时用 GDI+ 的 <code>SolidBrush</code> 画，GDI+ 在画的时候就把颜色合成进去了，PNG 里存下来的是 <code>A=255, RGB=(144,173,244)</code>——看着像半透明白，实际是实心淡蓝。后来改用 <code>SetPixel</code> 逐像素写 <code>A=110</code> 才测出真 alpha。</p>
+<p>验收也得换方法：别去比&quot;白条颜色有没有变&quot;，要拿两个 sprite 互相叠。<code>0.431×255 + 0.569×(60,110,235) = (144,173,244)</code>，实测对上才算混合通了。</p>
+<h3 id="57-相机">5.7 相机<a hidden class="anchor" aria-hidden="true" href="#57-相机">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> glm<span style="color:#f92672">::</span>mat4 m <span style="color:#f92672">=</span> glm<span style="color:#f92672">::</span>ortho(left, right, bottom, top, <span style="color:#f92672">-</span><span style="color:#ae81ff">1.0f</span>, <span style="color:#ae81ff">1.0f</span>);
+</span></span></code></pre></div><p><code>bottom</code> 传大的 y、<code>top</code> 传小的 y，这一处反着传是为了把&quot;世界 y 向下&quot;翻成 NDC 里的 y 向上。</p>
+<p><code>zoom</code> 的含义是&quot;一个世界单位占几个像素&quot;，视野大小等于 <code>viewport / zoom</code>。</p>
+<p><code>WorldToScreen</code> / <code>ScreenToWorld</code> 必须和 <code>ViewProj</code> 共用一套公式，否则鼠标点和画面错开。这两个函数到 S3 收尾做鼠标指格子的时候才第一次真用上。</p>
+<p>上传矩阵时 <code>glUniformMatrix4fv(..., GL_FALSE, ...)</code>，转置传 <code>GL_FALSE</code>。glm 默认列主序正好是 OpenGL 要的排布。这里传反会得到&quot;镜像 + 错位&quot;的画面，很容易被误判成相机公式写错了。</p>
+<h3 id="58-图集">5.8 图集<a hidden class="anchor" aria-hidden="true" href="#58-图集">#</a></h3>
+<p>测试图 128×128，8×8 = 64 格，每格 16×16，颜色各不相同，外围一圈深色边，右下角一个角标——角标是用来判断 UV 有没有上下颠倒的，翻了的图角标会跑到左上。</p>
+<p><code>atlas.txt</code> 一行一块：</p>
+<pre tabindex="0"><code>floor_stone 0 0 16 16 0
+wall_top    16 0 16 16 1
+</code></pre><p><code>Atlas</code> 里有三件事：</p>
+<p>越界校验，<code>x+w &lt;= tw &amp;&amp; y+h &lt;= th</code>，不满足就报错拒绝加载。图集描述错一个数字，表现是&quot;某块瓦片显示成隔壁的图&quot;，靠肉眼几乎发现不了，只能在加载期拦。</p>
+<p><code>FindId()</code> 启动时查一次，之后只用 <code>int</code>。早期是每次画瓦片都 <code>UvByName(&quot;floor_stone&quot;)</code>，线性查找加字符串比较，满屏 800 个瓦片就是每秒 48000 次 <code>strcmp</code>。</p>
+<p><code>solid</code> 列是提前做的（原来是 S4 的事）：每行末尾加一个可选布尔，告诉引擎这块挡不挡路。碰撞数据跟着美术走，而不是在代码里写 <code>if (tile == 5 || tile == 12)</code>。</p>
+<h3 id="59-瓦片地图与裁剪">5.9 瓦片地图与裁剪<a hidden class="anchor" aria-hidden="true" href="#59-瓦片地图与裁剪">#</a></h3>
+<p><code>map::TileMap</code> 只有一个二维 <code>int</code> 数组，<code>-1</code> 是空。</p>
+<p><code>Set</code> 越界忽略，<code>Get</code> 越界返回 <code>emptyTile</code>。生成器写到地图外、渲染扫到地图外，都不该崩。</p>
+<p>裁剪范围由相机反算：</p>
+<pre tabindex="0"><code>x0 = floor((center.x - halfW) / tileSize)
+x1 = ceil ((center.x + halfW) / tileSize) - 1
+</code></pre><p><code>ceil</code> 后面那个减一：右边界正好落在格线上时，那一格其实看不见，不减会多画一整列。</p>
+<p>200×200 地图、1280×720 视口、zoom=1，视野是 80×45 格：</p>
+<table>
+	<thead>
+			<tr>
+					<th>相机位置</th>
+					<th>提交瓦片数</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>起点（房间内）</td>
+					<td>976</td>
+			</tr>
+			<tr>
+					<td>一路向右</td>
+					<td>1024 → 1124 → 942 → 816 → 672 → 406 → 128 → 0</td>
+			</tr>
+			<tr>
+					<td>视野完全出地图</td>
+					<td>0，此时绘制调用也是 0</td>
+			</tr>
+	</tbody>
+</table>
+<p>最后一行值得单独确认：空批次是不产生绘制调用的，不是&quot;画了 0 个顶点&quot;。</p>
+<h3 id="510-从渲染器改成绘制入口结构返工">5.10 从渲染器改成绘制入口（结构返工）<a hidden class="anchor" aria-hidden="true" href="#510-从渲染器改成绘制入口结构返工">#</a></h3>
+<p>走到这里 <code>core/Renderer</code> 已经变成一团：清屏、viewport、swap、shader、还有 <code>DrawTileMap(map, atlas, tileSize, sprites, count)</code> 这种专为一种东西写的函数。</p>
+<p>问题很明显：每加一种东西就得多一个 <code>Draw*</code>，<code>DrawPlayer</code>、<code>DrawMonster</code>、<code>DrawItem</code>、<code>DrawParticles</code> 会一直长下去。而且引擎开始认识&quot;瓦片地图&quot;&ldquo;玩家&quot;这些游戏概念，engine/game 的边界就没了。</p>
+<p>拆成四层：</p>
+<pre tabindex="0"><code>rhi/GlDevice            清屏 / viewport / swap / GL 全局状态 / 错误检查
+renderer/BatchRenderer  攒批、按纹理自动分段、一次 drawElements
+renderer/Sprite         纯数据，里面没有 GL 调用
+core/Renderer           只做帧编排：BeginScene → Submit… → EndScene
+</code></pre><p>调用形态变成：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>renderer.BeginScene(camera);
+</span></span><span style="display:flex;"><span>renderer.Submit(sprite);
+</span></span><span style="display:flex;"><span>renderer.EndScene();
+</span></span></code></pre></div><p><code>EndScene</code> 里排序、分组、绘制、交换缓冲。调用方只管说要画什么，不管怎么画。</p>
+<p><code>Sprite</code> 定稿：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Sprite</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> rhi<span style="color:#f92672">::</span>Texture<span style="color:#f92672">*</span> texture;
+</span></span><span style="display:flex;"><span>    Rect  src;
+</span></span><span style="display:flex;"><span>    Vec2  center;
+</span></span><span style="display:flex;"><span>    Vec2  size;
+</span></span><span style="display:flex;"><span>    Color color;
+</span></span><span style="display:flex;"><span>    Layer layer;        <span style="color:#75715e">// Terrain/Object/Unit/Effect/Debug/UI
+</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">bool</span>  flipX, flipY;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">bool</span>  screenSpace;  <span style="color:#75715e">// true 表示 center 是屏幕像素
+</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">float</span> rotation;     <span style="color:#75715e">// 弧度，绕 center 顺时针
+</span></span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>排序：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>stable_sort(sprites_, [](a, b) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (a.layer <span style="color:#f92672">!=</span> b.layer) <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">int</span>(a.layer) <span style="color:#f92672">&lt;</span> <span style="color:#66d9ef">int</span>(b.layer);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> a.center.y <span style="color:#f92672">&lt;</span> b.center.y;   <span style="color:#75715e">// y 大的后画，压在上面
+</span></span></span><span style="display:flex;"><span>});
+</span></span></code></pre></div><p>用 <code>stable_sort</code> 而不是 <code>sort</code>，是因为同一 y 的两个物件每帧换前后会闪。只有一张图集的时候，排序不会增加绘制调用，只是改提交顺序。</p>
+<p><code>Layer::Debug</code> 放在 <code>Effect</code> 之后、<code>UI</code> 之前，这样世界里的调试框盖得住单位，又不会盖住 HUD。</p>
+<p>顺带说一句文档里那条&quot;顶点带 texIndex，16 槽一个 draw call&rdquo;——GL 3.3 做不到。GLSL 3.30 里 <code>sampler2D uTex[16]</code> 的索引必须是常量表达式，顶点传下来的索引不能拿来动态索引入 sampler 数组。真要做只能上 <code>GL_TEXTURE_2D_ARRAY</code>。所以改成按纹理分段 flush：<code>BatchRenderer</code> 记住当前纹理，换纹理就 Flush。这样绘制调用的上限是这一帧用到的纹理数，单图集时还是 1。</p>
+<h3 id="511-屏幕通路">5.11 屏幕通路<a hidden class="anchor" aria-hidden="true" href="#511-屏幕通路">#</a></h3>
+<p>一开始所有 Sprite 都走同一套 <code>uViewProj</code>，于是文字跟着相机跑，滚轮一滚字就变大。HUD 得钉在屏幕上。</p>
+<p><code>EndScene</code> 分两趟：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// 世界：相机矩阵
+</span></span></span><span style="display:flex;"><span>glUniformMatrix4fv(viewProjLocation_, ..., camera.ViewProj(...));
+</span></span><span style="display:flex;"><span><span style="color:#f92672">&lt;&lt;</span> screenSpace <span style="color:#f92672">==</span> false <span style="color:#960050;background-color:#1e0010">的</span> <span style="color:#f92672">&gt;&gt;</span>  Flush();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 屏幕：像素正交
+</span></span></span><span style="display:flex;"><span>glUniformMatrix4fv(viewProjLocation_, ..., screenCamera.ScreenProj(...));
+</span></span><span style="display:flex;"><span><span style="color:#f92672">&lt;&lt;</span> screenSpace <span style="color:#f92672">==</span> true <span style="color:#960050;background-color:#1e0010">的</span> <span style="color:#f92672">&gt;&gt;</span>   Flush();
+</span></span></code></pre></div><p>屏幕那趟用的是&quot;像素到 NDC&quot;的正交投影，<code>left=0, right=viewportW, bottom=viewportH, top=0</code>，不是单位矩阵。这样写 UI 坐标可以直接写 <code>{8, 8}</code>，不用自己算 NDC。</p>
+<p>代价是每帧最多多一次绘制调用。正常场景 <code>drawcalls=2</code>（世界一次、屏幕一次）；开调试绘制是 3，因为屏幕趟里图集和字体是两种纹理，中间会断一次批。</p>
+<p>这块要是拖到 S7 才补，物品栏、日志面板、鼠标光标都得返工。现在补进去几乎没成本。</p>
+<h3 id="512-旋转">5.12 旋转<a hidden class="anchor" aria-hidden="true" href="#512-旋转">#</a></h3>
+<p><code>rotation</code> 完全在 CPU 上算：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#66d9ef">float</span> c <span style="color:#f92672">=</span> cos(rotation), s <span style="color:#f92672">=</span> sin(rotation);
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 每个角相对 center 的 (dx,dy) → (dx*c - dy*s, dx*s + dy*c)
+</span></span></span></code></pre></div><p>shader 一个字没改。顶点本来就是 CPU 算好的世界坐标，旋转只是算顶点位置。y 向下的坐标系里，<code>atan2(dy, dx)</code> 的结果正好就是&quot;顺时针为正&quot;的角度，不用取反——第一次拿它画线段的时候确认过。</p>
+<h3 id="513-位图字体">5.13 位图字体<a hidden class="anchor" aria-hidden="true" href="#513-位图字体">#</a></h3>
+<p>没上 FreeType，也没碰中文（那是 S7 的事）。第一版就是一张 8×16 的 ASCII 图集：95 个可打印字符，16 列 6 行，输出 128×96。字形必须是纯白加 alpha，颜色靠顶点色染，字形自己带颜色的话染出来是脏的。</p>
+<p><code>renderer/BitmapFont</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">bool</span> <span style="color:#a6e22e">Load</span>(path, cellW<span style="color:#f92672">=</span><span style="color:#ae81ff">8</span>, cellH<span style="color:#f92672">=</span><span style="color:#ae81ff">16</span>, columns<span style="color:#f92672">=</span><span style="color:#ae81ff">16</span>, firstChar<span style="color:#f92672">=</span><span style="color:#ae81ff">32</span>);
+</span></span><span style="display:flex;"><span>Rect <span style="color:#a6e22e">Glyph</span>(<span style="color:#66d9ef">char</span> c) <span style="color:#66d9ef">const</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span>  <span style="color:#a6e22e">Advance</span>() <span style="color:#66d9ef">const</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span>  <span style="color:#a6e22e">LineHeight</span>() <span style="color:#66d9ef">const</span>;
+</span></span></code></pre></div><p><code>Text.h</code> 一个自由函数逐字符 <code>Submit</code>。</p>
+<p>三条规矩，全都踩过：</p>
+<p>只允许整数倍缩放。1.5 倍会把 8px 的硬边糊成灰边，所以 <code>scale</code> 进来先取整。</p>
+<p>坐标必须 <code>floor</code>。字形落在半像素上会同时采到两个纹素，边缘发灰、字发虚。</p>
+<p>空格不画，但必须推进一格。不然 <code>&quot;HP: 100&quot;</code> 挤成一坨。</p>
+<p>第一版图集的字太小。逐像素量了一遍，<code>A</code> 的墨迹只有 6px 高（<code>y[4-9]</code>），塞在 16px 格子里，上下各空一大截，看着又小又稀。重按 Consolas 13px 生成：</p>
+<table>
+	<thead>
+			<tr>
+					<th></th>
+					<th>原版</th>
+					<th>重生成</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><code>A</code> / <code>0</code> 墨迹</td>
+					<td><code>y[4-9]</code>，6px 高</td>
+					<td><code>y[4-11]</code>，8px 高</td>
+			</tr>
+			<tr>
+					<td><code>H</code> 横向</td>
+					<td><code>x[2-5]</code></td>
+					<td><code>x[1-5]</code></td>
+			</tr>
+			<tr>
+					<td><code>g</code> 下伸</td>
+					<td>—</td>
+					<td>到 <code>y[14]</code>，不切底</td>
+			</tr>
+			<tr>
+					<td>半透明边</td>
+					<td>0</td>
+					<td>0（纯二值 alpha）</td>
+			</tr>
+			<tr>
+					<td>不透明像素</td>
+					<td>1129</td>
+					<td>1427</td>
+			</tr>
+	</tbody>
+</table>
+<p>&ldquo;字看着糊&quot;和&quot;字看着小&quot;是两回事，得分开查。糊是采样问题（坐标没取整、用了线性过滤）；小是图集生成时字号就不够。混在一起改，改完还是不对。</p>
+<h3 id="514-调试绘制">5.14 调试绘制<a hidden class="anchor" aria-hidden="true" href="#514-调试绘制">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">Init</span>(<span style="color:#66d9ef">const</span> rhi<span style="color:#f92672">::</span>Texture<span style="color:#f92672">&amp;</span> tex, <span style="color:#66d9ef">const</span> Rect<span style="color:#f92672">&amp;</span> whiteUv);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">Line</span>(Renderer<span style="color:#f92672">&amp;</span>, Vec2 a, Vec2 b, <span style="color:#66d9ef">float</span> thickness, Color, <span style="color:#66d9ef">bool</span> screenSpace<span style="color:#f92672">=</span>false);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">RectOutline</span>(Renderer<span style="color:#f92672">&amp;</span>, <span style="color:#66d9ef">const</span> Rect<span style="color:#f92672">&amp;</span>, <span style="color:#66d9ef">float</span> thickness, Color, <span style="color:#66d9ef">bool</span> screenSpace<span style="color:#f92672">=</span>false);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">FillRect</span>(Renderer<span style="color:#f92672">&amp;</span>, <span style="color:#66d9ef">const</span> Rect<span style="color:#f92672">&amp;</span>, Color, <span style="color:#66d9ef">bool</span> screenSpace<span style="color:#f92672">=</span>false);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">CircleRing</span>(Renderer<span style="color:#f92672">&amp;</span>, Vec2 center, <span style="color:#66d9ef">float</span> radius, <span style="color:#66d9ef">int</span> segments, <span style="color:#66d9ef">float</span> thickness, Color);
+</span></span></code></pre></div><p><code>DebugDraw</code> 不认识 Atlas，只收一个纹理引用和一个白色 UV 矩形。game 层构造时传 <code>atlas.TextureRef()</code> 和 <code>atlas.Uv(player.tile)</code>——就是那块纯白格。于是一个白方块加顶点色加旋转，线、框、圆环就都有了，不用为调试再加贴图，engine 也不用去认识 game 的图集。</p>
+<p>三个实现细节：</p>
+<p>线段就是旋转过的细长矩形，<code>size = {len + thickness, thickness}</code>，多出来那段把首尾的方角缺口补上。</p>
+<p>矩形框四条边得错开。现在四条各缩半个线宽，拐角会叠出一个 <code>t×t</code> 的方块——alpha 是 255 时看不出来，画半透明的框（比如那条 <code>{255,255,255,180}</code>）角上就明显亮一块。改法是横向两条满宽、纵向两条在 y 方向缩进 <code>thickness</code>。</p>
+<p>圆环半径要放大 <code>1/cos(π/segments)</code>。多边形内切于圆，按半径直接描点看着会偏小，补偿之后顶点才落在圆上。24 段够用。</p>
+<hr>
+<h2 id="六几个决定">六、几个决定<a hidden class="anchor" aria-hidden="true" href="#六几个决定">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>决定</th>
+					<th>为什么</th>
+					<th>代价</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>OpenGL 3.3 core，不用 <code>SDL_Renderer</code></td>
+					<td>2010 年以后的硬件都支持；core 强制走 VBO 和 shader</td>
+					<td>自己做 RHI、矩阵、热重载</td>
+			</tr>
+			<tr>
+					<td>glad2 代替自写 loader</td>
+					<td>函数枚举几千个，手写必漏，漏了崩在驱动里</td>
+					<td>多一个第三方目录</td>
+			</tr>
+			<tr>
+					<td>顶点色 8 位</td>
+					<td>每顶点省 12 字节，8 位够用</td>
+					<td>得记得 <code>normalized=GL_TRUE</code></td>
+			</tr>
+			<tr>
+					<td>NEAREST + CLAMP_TO_EDGE</td>
+					<td>像素风不能线性过滤</td>
+					<td>非整数缩放会串色，见遗留 2</td>
+			</tr>
+			<tr>
+					<td>放弃 16 纹理槽，改按纹理分段</td>
+					<td>GLSL 3.30 的 sampler 数组不能动态索引</td>
+					<td>绘制调用数等于纹理数</td>
+			</tr>
+			<tr>
+					<td><code>Submit(Sprite)</code> 而不是 <code>DrawSprite</code> 直连</td>
+					<td>引擎只认识四边形，不认识瓦片地图和玩家</td>
+					<td>多一层间接，多一个结构体</td>
+			</tr>
+			<tr>
+					<td><code>stable_sort</code></td>
+					<td>同 y 的物件不能每帧换前后</td>
+					<td>每帧一次临时分配，1 万项约 440KB</td>
+			</tr>
+			<tr>
+					<td>屏幕/世界两条通路</td>
+					<td>HUD 必须钉在屏幕上</td>
+					<td>每帧最多多一次绘制调用</td>
+			</tr>
+			<tr>
+					<td>旋转放 CPU</td>
+					<td>shader 不用改，顶点本来就是世界坐标</td>
+					<td>每个四边形多四次 sin/cos，可以忽略</td>
+			</tr>
+			<tr>
+					<td>位图字体，不上 FreeType</td>
+					<td>现在只要 ASCII</td>
+					<td>只支持整数倍缩放</td>
+			</tr>
+			<tr>
+					<td>调试用图集白格当笔刷</td>
+					<td>不加贴图，engine 不依赖 game 的图集</td>
+					<td>圆是折线近似</td>
+			</tr>
+	</tbody>
+</table>
+<hr>
+<h2 id="七踩过的坑">七、踩过的坑<a hidden class="anchor" aria-hidden="true" href="#七踩过的坑">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>#</th>
+					<th>现象</th>
+					<th>原因</th>
+					<th>处理</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>1</td>
+					<td>GL 调用崩在驱动里，栈上没有自己的代码</td>
+					<td>自写 loader 漏函数、漏枚举</td>
+					<td>换 glad2</td>
+			</tr>
+			<tr>
+					<td>2</td>
+					<td>改 shader 源码画面不变</td>
+					<td>assets 被拷到 exe 旁，程序读副本</td>
+					<td>资源根双轨（<code>DG_ASSET_ROOT</code>）</td>
+			</tr>
+			<tr>
+					<td>3</td>
+					<td>中文路径的图加载失败</td>
+					<td>stb 内部走窄字符 <code>fopen</code></td>
+					<td><code>u8path</code> + ifstream + <code>stbi_load_from_memory</code></td>
+			</tr>
+			<tr>
+					<td>4</td>
+					<td>纹理整张纯黑</td>
+					<td>没有 <code>GL_TEXTURE_MIN_FILTER</code>，默认 mipmap 但没 mip 链</td>
+					<td>设 <code>GL_NEAREST</code></td>
+			</tr>
+			<tr>
+					<td>5</td>
+					<td>宽度非 4 倍数的图错位</td>
+					<td><code>GL_UNPACK_ALIGNMENT</code> 默认 4</td>
+					<td><code>glPixelStorei(GL_UNPACK_ALIGNMENT, 1)</code></td>
+			</tr>
+			<tr>
+					<td>6</td>
+					<td>半透明条看着像实心浅色，测不出 alpha</td>
+					<td>测试图是 GDI+ 画的，画的时候已经合成（<code>A=255</code>）</td>
+					<td><code>SetPixel</code> 写 <code>A=110</code> 重做；验收改成两个 sprite 互叠</td>
+			</tr>
+			<tr>
+					<td>7</td>
+					<td>染色没生效</td>
+					<td><code>GL_UNSIGNED_BYTE</code> 必须 <code>normalized=GL_TRUE</code></td>
+					<td>改 TRUE，实测 <code>(230,21,21)</code></td>
+			</tr>
+			<tr>
+					<td>8</td>
+					<td>热重载后画面变白或变暗</td>
+					<td>uniform 是 program 的状态，换 program 全丢</td>
+					<td>每帧 <code>Use()</code> 后重设；location 按 program id 缓存</td>
+			</tr>
+			<tr>
+					<td>9</td>
+					<td>9000 个精灵出现 2 次绘制，以为有 bug</td>
+					<td>容量 8192，满批必须断</td>
+					<td>正常，8192 + 810</td>
+			</tr>
+			<tr>
+					<td>10</td>
+					<td>瓦片之间有彩色细缝</td>
+					<td>非整数 zoom + 图集没 padding + NEAREST</td>
+					<td>还没修，见遗留 2</td>
+			</tr>
+			<tr>
+					<td>11</td>
+					<td>文字边缘发灰、字发虚</td>
+					<td>字形落在半像素上，又允许小数缩放</td>
+					<td>坐标 <code>floor</code>，缩放取整</td>
+			</tr>
+			<tr>
+					<td>12</td>
+					<td>文字又小又稀</td>
+					<td>图集生成时字号就不够，墨迹只有 6px</td>
+					<td>重生成，8px</td>
+			</tr>
+			<tr>
+					<td>13</td>
+					<td><code>glViewport</code> 和窗口尺寸不一致时画面缩在左下角</td>
+					<td><code>SDL_GetWindowSize</code> 是逻辑尺寸，DPI 缩放下不等于像素尺寸</td>
+					<td>还没修，见遗留 1</td>
+			</tr>
+			<tr>
+					<td>14</td>
+					<td>矩形框拐角比边线亮</td>
+					<td>四条线各缩半宽，拐角叠出方块</td>
+					<td>还没修，见遗留 3</td>
+			</tr>
+	</tbody>
+</table>
+<p>第 2 和第 6 最该记。一个是&quot;文件存在不等于你读到的是改的那份&rdquo;，另一个是&quot;测试工具本身也会骗你&quot;。</p>
+<hr>
+<h2 id="八数字">八、数字<a hidden class="anchor" aria-hidden="true" href="#八数字">#</a></h2>
+<table>
+	<thead>
+			<tr>
+					<th>指标</th>
+					<th>值</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>帧率</td>
+					<td>240.0~240.5 fps（跟 240Hz 屏）</td>
+			</tr>
+			<tr>
+					<td>帧耗时</td>
+					<td>4.16~4.18 ms</td>
+			</tr>
+			<tr>
+					<td>逻辑步长</td>
+					<td>60 ticks/s</td>
+			</tr>
+			<tr>
+					<td>正常场景绘制调用</td>
+					<td>2</td>
+			</tr>
+			<tr>
+					<td>开调试绘制的绘制调用</td>
+					<td>3</td>
+			</tr>
+			<tr>
+					<td>起点视野的四边形数</td>
+					<td>765 = 749 瓦片 + 1 玩家 + 15 字形（含两个空格）</td>
+			</tr>
+			<tr>
+					<td>1000 格瓦片</td>
+					<td>1 次</td>
+			</tr>
+			<tr>
+					<td>9002 个精灵</td>
+					<td>2 次</td>
+			</tr>
+			<tr>
+					<td>200×200 地图可见瓦片</td>
+					<td>976 → 0</td>
+			</tr>
+			<tr>
+					<td>256×256 地图可见瓦片</td>
+					<td>749</td>
+			</tr>
+			<tr>
+					<td>图集</td>
+					<td>128×128，64 格，每格 16×16</td>
+			</tr>
+			<tr>
+					<td>字体图集</td>
+					<td>128×96，96 格，每格 8×16，1427 个不透明像素</td>
+			</tr>
+			<tr>
+					<td>顶点缓冲</td>
+					<td>8192 个四边形 = 655360 字节</td>
+			</tr>
+			<tr>
+					<td>exe</td>
+					<td>Debug 18.8 MB / Release 5.1 MB</td>
+			</tr>
+			<tr>
+					<td>GPU</td>
+					<td>Intel RaptorLake-S Mobile Graphics（核显）</td>
+			</tr>
+	</tbody>
+</table>
+<p><code>quads=765</code> 里那 15 个字形包含两个空格。空格的字形区是有效矩形、内容是空的，<code>SubmitText</code> 照样会提交——无害，一个四边形而已。</p>
+<hr>
+<h2 id="九遗留">九、遗留<a hidden class="anchor" aria-hidden="true" href="#九遗留">#</a></h2>
+<p>按该先修的顺序：</p>
+<ol>
+<li><strong><code>GlDevice</code> 用的是 <code>SDL_GetWindowSize</code></strong>，应该换成 <code>SDL_GetWindowSizeInPixels</code>。Windows 缩放在 125% 或 150% 时（笔记本默认就是这个），逻辑尺寸不等于像素尺寸，<code>glViewport</code> 和 <code>ScreenToWorld</code> 会一起错位。一行能修，但影响面最大。</li>
+<li><strong>图集没有 padding</strong>，非整数 zoom 下相邻瓦片串 1px 色。两条路：<code>Atlas::Uv</code> 里做半纹素内缩（马上见效，每格丢半像素），或者等 S4 的离线图集工具生成带 1px padding 的图集。</li>
+<li><strong><code>RectOutline</code> 拐角重叠</strong>，半透明框的角会亮一块。</li>
+<li><strong><code>BitmapFont</code> 自己持有纹理，<code>SubmitText</code> 还单收一个 <code>texture</code></strong>，冗余。接第二个字体时会出现字和纹理对不上的 bug。改成内部取 <code>font.TextureRef()</code>。</li>
+<li><strong>不支持换行、行距、对齐</strong>。现在只有单行左对齐，S7 做面板时补。</li>
+<li><strong>没有按纹理分组</strong>。屏幕通路里图集和字体交替提交会多断一次批。真要优化在 <code>Renderer</code> 里做二次分组，现在不值得。</li>
+<li><strong><code>stable_sort</code> 每帧临时分配</strong>，1 万项约 440KB。做&quot;30 分钟内存曲线是平的&quot;那条验收时换成复用成员的稳定归并。</li>
+<li><strong>S3 还有三项验收没跑</strong>：1 万精灵压测（F2）、改分辨率与全屏、Release 长跑。</li>
+<li><strong><code>engine/CMakeLists.txt</code> 还是 <code>GLOB_RECURSE</code> 收全目录</strong>。等 <code>engine/tools/</code> 出独立 exe 的 <code>main.cpp</code> 就会撞，最迟 S11 前改显式列表。</li>
+<li><strong><code>game/main.cpp</code> 里的玩家和碰撞是临时探针</strong>。按&quot;先写引擎、再写游戏&quot;的顺序，这段冻结，等 S5 的实体和 S6 的碰撞做好就替掉，不再往前加玩法。</li>
+<li>十二个预留空目录和 <code>tests/</code> 没进 git（git 不跟踪空目录），克隆下来会消失。</li>
+<li><code>game.exe</code> 还是控制台子系统，黑色控制台窗口挡在游戏窗口前面。Release 该按配置切 <code>WIN32_EXECUTABLE</code>。</li>
+</ol>
+<hr>
+<h2 id="十下一步">十、下一步<a hidden class="anchor" aria-hidden="true" href="#十下一步">#</a></h2>
+<p>S3 剩三项验收，跑完打 <code>V0.2.0</code>，然后进 S4。</p>
+<p>S4 的目标是&quot;改一张美术，重开或热重载就生效，代码零改动&quot;。顺序：</p>
+<ol>
+<li>引入 nlohmann/json，header-only，单文件放 <code>third_party/nlohmann/</code>。注意 <code>raw.githubusercontent</code> 在本地不通，别指望 curl。</li>
+<li>写 <code>assets.json</code>，把现有资源全登记进去：<code>tex://atlas</code>、<code>tex://font</code>、<code>tex://missing</code>、<code>atlas://tiles</code>、<code>shader://basic</code>、<code>font://hud</code>。</li>
+<li><code>AssetRegistry</code>：<code>Load</code>、<code>GetTexture/GetAtlas/GetFont/GetShader</code>、占位兜底、错误行号。</li>
+<li><code>main.cpp</code> 改成从 registry 取，删掉所有 <code>Paths::Resolve(&quot;res://...&quot;)</code> 字面路径。</li>
+<li>验收：把 <code>assets.json</code> 里 <code>tex://atlas</code> 的 path 改成一个不存在的路径，重开应该看到粉黑格加一行指出第几行的错误，而不是崩。</li>
+<li>热重载（F5），纹理和 JSON 都要监听。</li>
+<li>离线图集工具：读 Aseprite 导出的 json，生成带 padding 的图集和 UV 表。</li>
+</ol>
+<p>第 4 步做完，项目里就不该再有硬编码的资源路径了。</p>
+<p>占位图已经放在 <code>game/assets/textures/missing.png</code>（16×16 粉黑棋盘格）。约定是 <code>GetTexture</code> 在 ID 不存在或读文件失败时返回占位图，不返回 <code>nullptr</code>——调用方永远不用判空。如果返回空指针，你会在几十个调用点写 <code>if (!t) return;</code>，而那些 <code>return</code> 里往往顺手吞掉了半个画面。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="http://localhost:1313/tags/c&#43;&#43;/">C&#43;&#43;</a></li>
+      <li><a href="http://localhost:1313/tags/%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91/">引擎开发</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="http://localhost:1313/">Strandingwhale | Tech Blog</a></span> · 
+
+    
+    
+    <span>
+        Powered by
+        <a href="https://gohugo.io/?utm_source=papermod" rel="noopener" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

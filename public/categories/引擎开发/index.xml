@@ -6,8 +6,168 @@
     <description>Recent content in 引擎开发 on Strandingwhale | Tech Blog</description>
     <generator>Hugo</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 13 Nov 2026 22:10:00 +0800</lastBuildDate>
+    <lastBuildDate>Sun, 22 Nov 2026 22:10:00 +0800</lastBuildDate>
     <atom:link href="http://localhost:1313/categories/%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>地下城引擎开发S2-3</title>
+      <link>http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s2-3/</link>
+      <pubDate>Sun, 22 Nov 2026 22:10:00 +0800</pubDate>
+      <guid>http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s2-3/</guid>
+      <description>&lt;h1 id=&#34;地下城引擎--s2s3-开发记录&#34;&gt;地下城引擎 · S2–S3 开发记录&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;项目：地下城引擎（2D 瓦片地下城 / Roguelike 方向）
+记录时间：2026-11-22
+版本：V0.1.2
+平台：Windows + MinGW-w64（&lt;code&gt;D:\mingw64&lt;/code&gt;，g++ 15.2.0）+ Trae&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;S2 没什么可说的，就是几个结构体和五个小函数。S3 走了十一步，中间返工两次：一次是 GL 函数加载，一次是资源路径。两次都是我先把方案定死了再动手，撞了墙才换。这里把过程和撞墙的地方记下来。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;一阶段与验收&#34;&gt;一、阶段与验收&lt;/h2&gt;
+&lt;table&gt;
+	&lt;thead&gt;
+			&lt;tr&gt;
+					&lt;th&gt;阶段&lt;/th&gt;
+					&lt;th&gt;目标&lt;/th&gt;
+					&lt;th&gt;验收标准&lt;/th&gt;
+					&lt;th&gt;结果&lt;/th&gt;
+			&lt;/tr&gt;
+	&lt;/thead&gt;
+	&lt;tbody&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S2&lt;/td&gt;
+					&lt;td&gt;数学类型&lt;/td&gt;
+					&lt;td&gt;浮点坐标和格子坐标在类型上分开，传错有编译期阻力&lt;/td&gt;
+					&lt;td&gt;通过（精简版）&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-1&lt;/td&gt;
+					&lt;td&gt;OpenGL 3.3 core 上下文&lt;/td&gt;
+					&lt;td&gt;拿到真实版本号与渲染器名，不是 &lt;code&gt;GDI Generic&lt;/code&gt;&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-2&lt;/td&gt;
+					&lt;td&gt;GL 函数加载&lt;/td&gt;
+					&lt;td&gt;用到的函数都能调到&lt;/td&gt;
+					&lt;td&gt;通过（换成 glad2）&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-3&lt;/td&gt;
+					&lt;td&gt;Shader 文件化 + 热重载&lt;/td&gt;
+					&lt;td&gt;改 &lt;code&gt;.frag&lt;/code&gt; 不重编译就生效；写坏语法画面不崩、日志报行号&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-4&lt;/td&gt;
+					&lt;td&gt;纹理&lt;/td&gt;
+					&lt;td&gt;四象限图方位对、边缘锐利、中文路径能加载&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-5&lt;/td&gt;
+					&lt;td&gt;合批&lt;/td&gt;
+					&lt;td&gt;1000 格 1 次绘制；9000 精灵 2 次；alpha 混合正确&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-6&lt;/td&gt;
+					&lt;td&gt;正交相机&lt;/td&gt;
+					&lt;td&gt;移动缩放和公式一致，能反算鼠标位置&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-7&lt;/td&gt;
+					&lt;td&gt;图集&lt;/td&gt;
+					&lt;td&gt;64 格 UV 正确、越界拦得住、能按名字查&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-8&lt;/td&gt;
+					&lt;td&gt;瓦片地图 + 视野裁剪&lt;/td&gt;
+					&lt;td&gt;只提交视野内瓦片；视野出地图时绘制调用为 0&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-9&lt;/td&gt;
+					&lt;td&gt;提交式绘制入口&lt;/td&gt;
+					&lt;td&gt;引擎不再认识&amp;quot;瓦片地图&amp;quot;；分层排序；屏幕/世界两条通路&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-10&lt;/td&gt;
+					&lt;td&gt;位图字体&lt;/td&gt;
+					&lt;td&gt;能画出 &lt;code&gt;HP: 100&lt;/code&gt;；转相机字不动；边缘不发灰&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-11&lt;/td&gt;
+					&lt;td&gt;调试绘制&lt;/td&gt;
+					&lt;td&gt;线段、矩形框、圆环，世界和屏幕两种坐标都能画&lt;/td&gt;
+					&lt;td&gt;通过&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;S3-验收&lt;/td&gt;
+					&lt;td&gt;1 万精灵 / 256 地图 / 换分辨率&lt;/td&gt;
+					&lt;td&gt;见第八节&lt;/td&gt;
+					&lt;td&gt;还没跑&lt;/td&gt;
+			&lt;/tr&gt;
+	&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;二环境&#34;&gt;二、环境&lt;/h2&gt;
+&lt;table&gt;
+	&lt;thead&gt;
+			&lt;tr&gt;
+					&lt;th&gt;项&lt;/th&gt;
+					&lt;th&gt;取值&lt;/th&gt;
+					&lt;th&gt;备注&lt;/th&gt;
+			&lt;/tr&gt;
+	&lt;/thead&gt;
+	&lt;tbody&gt;
+			&lt;tr&gt;
+					&lt;td&gt;编译器&lt;/td&gt;
+					&lt;td&gt;MinGW-w64 g++ 15.2.0（&lt;code&gt;D:\mingw64&lt;/code&gt;）&lt;/td&gt;
+					&lt;td&gt;不用 MSVC，Windows SDK 缺&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;构建&lt;/td&gt;
+					&lt;td&gt;CMake 4.5.0 + &lt;code&gt;MinGW Makefiles&lt;/code&gt;&lt;/td&gt;
+					&lt;td&gt;&lt;code&gt;--preset mingw-debug&lt;/code&gt; / &lt;code&gt;mingw-release&lt;/code&gt;&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;窗口 / 输入 / 上下文&lt;/td&gt;
+					&lt;td&gt;SDL3 &lt;code&gt;release-3.4.20&lt;/code&gt;&lt;/td&gt;
+					&lt;td&gt;静态链接&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;图形 API&lt;/td&gt;
+					&lt;td&gt;OpenGL 3.3 Core&lt;/td&gt;
+					&lt;td&gt;&lt;code&gt;SDL_WINDOW_OPENGL&lt;/code&gt; + &lt;code&gt;SDL_GL_CreateContext&lt;/code&gt;&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;GL 函数加载&lt;/td&gt;
+					&lt;td&gt;glad2（&lt;code&gt;gl.c&lt;/code&gt; + &lt;code&gt;include&lt;/code&gt;）&lt;/td&gt;
+					&lt;td&gt;早期自写的 loader 已删&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;数学&lt;/td&gt;
+					&lt;td&gt;glm &lt;code&gt;1.0.3&lt;/code&gt;&lt;/td&gt;
+					&lt;td&gt;只出现在 &lt;code&gt;.cpp&lt;/code&gt;&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;图片解码&lt;/td&gt;
+					&lt;td&gt;stb_image（master &lt;code&gt;4e9b368&lt;/code&gt;）&lt;/td&gt;
+					&lt;td&gt;&lt;code&gt;STB_IMAGE_IMPLEMENTATION&lt;/code&gt; 只在一个文件里展开&lt;/td&gt;
+			&lt;/tr&gt;
+			&lt;tr&gt;
+					&lt;td&gt;GUI&lt;/td&gt;
+					&lt;td&gt;ImGui &lt;code&gt;v1.93.0-docking&lt;/code&gt;&lt;/td&gt;
+					&lt;td&gt;已编进 engine，还没接&lt;/td&gt;
+			&lt;/tr&gt;
+	&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;启动日志里的实际环境：&lt;/p&gt;</description>
+    </item>
     <item>
       <title>地下城引擎开发S0-1</title>
       <link>http://localhost:1313/posts/2026/11/%E5%9C%B0%E4%B8%8B%E5%9F%8E%E5%BC%95%E6%93%8E%E5%BC%80%E5%8F%91s0-1/</link>
